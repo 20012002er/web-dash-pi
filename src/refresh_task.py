@@ -65,20 +65,14 @@ class RefreshTask:
     render images or push anything to a display. Instead:
       * ``determine_current_plugin()`` consults the live config (loop override,
         loop_enabled, LoopManager) to decide which plugin should be active now.
-      * ``record_refresh()`` persists a RefreshInfo entry (throttled to reduce
-        disk writes, matching the original's 12-call batch cadence).
+      * ``record_refresh()`` persists a RefreshInfo entry.
       * ``get_current_state()`` returns the snapshot the frontend polls.
     """
-
-    # Throttle: only persist to disk every N refresh records
-    CONFIG_WRITE_INTERVAL = 12
 
     def __init__(self, config):
         self.config = config
         self.running = True
         self.last_loop_rotation_time = datetime.now()
-        # Counter mirroring the original batched-write cadence
-        self._refresh_counter = 0
 
     # ------------------------------------------------------------------
     # Plugin selection
@@ -137,9 +131,9 @@ class RefreshTask:
     def record_refresh(self, plugin_id, refresh_type, loop_name=None):
         """Persist a RefreshInfo entry after a plugin's data has been refreshed.
 
-        Mirrors the original's throttled-write behaviour: only every
-        ``CONFIG_WRITE_INTERVAL`` calls actually flush to disk, reducing
-        wear on the underlying storage.
+        In the web dashboard, refreshes are infrequent (triggered by manual
+        updates or loop rotations every few minutes), so we write to disk on
+        every call. This guarantees loop state survives server restarts.
         """
         self.config.refresh_info = RefreshInfo(
             refresh_type=refresh_type,
@@ -147,14 +141,7 @@ class RefreshTask:
             refresh_time=datetime.now().isoformat(),
             loop=loop_name,
         )
-        self._refresh_counter += 1
-        if self._refresh_counter >= self.CONFIG_WRITE_INTERVAL:
-            logger.debug(
-                "Writing config to disk (batched after %d refreshes)",
-                self._refresh_counter,
-            )
-            self.config.write_config()
-            self._refresh_counter = 0
+        self.config.write_config()
 
     def signal_config_change(self):
         """Notify that config has changed.

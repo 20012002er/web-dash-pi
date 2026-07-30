@@ -256,9 +256,11 @@
         var gradStart = (hourAngle - 90 + 360) % 360;
         var gradEnd = (minuteAngle - 90 + 360) % 360;
 
-        var minuteLength = dim * 0.35;
-        var hourLength = dim * 0.22;
-        var handWidth = Math.max(dim * 0.013, 2);
+        // SVG viewBox is 0 0 100 100, so all hand geometry uses SVG units (not
+        // pixels). Convert visual proportions to 0-100 scale.
+        var minuteLength = 35;   // 35% of the viewBox radius
+        var hourLength = 22;     // 22% of the viewBox radius
+        var handWidth = 1.3;     // ~1.3% of viewBox for a visible stroke
         var cx = 50, cy = 50;
 
         function handSvg(angle, length, color, width) {
@@ -309,7 +311,8 @@
         var faceSize = dim * 0.45;
         var hourAngle = handAngle(data.hour_24, data.minute, data.second, true);
         var minuteAngle = handAngle(data.hour_24, data.minute, data.second, false);
-        var handWidth = Math.max(dim * 0.009, 2);
+        // SVG viewBox is 0 0 100 100 — hand width in SVG units.
+        var handWidth = 1.0;
 
         var cx = 50, cy = 50;
         var hourTip = polarToCartesian(cx, cy, 30, hourAngle);
@@ -334,9 +337,9 @@
                 '<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">' +
                   marks +
                   '<line x1="' + minBase.x + '" y1="' + minBase.y + '" x2="' + minTip.x + '" y2="' + minTip.y +
-                    '" stroke="' + data.secondary_color + '" stroke-width="' + (handWidth / dim * 100) + '" stroke-linecap="round" />' +
+                    '" stroke="' + data.secondary_color + '" stroke-width="' + handWidth + '" stroke-linecap="round" />' +
                   '<line x1="' + hourBase.x + '" y1="' + hourBase.y + '" x2="' + hourTip.x + '" y2="' + hourTip.y +
-                    '" stroke="' + data.secondary_color + '" stroke-width="' + (handWidth / dim * 100) + '" stroke-linecap="round" />' +
+                    '" stroke="' + data.secondary_color + '" stroke-width="' + handWidth + '" stroke-linecap="round" />' +
                 '</svg>' +
                 '<div class="divided-center" style="width:' + Math.max(dim * 0.028, 8) + 'px;height:' + Math.max(dim * 0.028, 8) + 'px;' +
                      'background:' + data.primary_color + ';border:' + Math.max(dim * 0.007, 2) + 'px solid ' + data.secondary_color + ';"></div>' +

@@ -35,18 +35,7 @@
         "active_loop": null
     },
     "refresh_info": {
-        "refresh_time": "2026-07-30T22:01:08.054436",
-        "refresh_type": "Data Fetch",
-        "plugin_id": "image_album"
-    },
-    "plugin_order": [],
-    "proxy": {
-        "enabled": false
-    },
-    "plugin_last_settings_image_album": {
-        "albumProvider": "Immich",
-        "url": "http://192.168.28.130:2283",
-        "album": "happy",
-        "fitMode": "fit"
-    }
-}
+        "refresh_time": "2026-07-30T21:49:38.674681",
+        "refresh_type": "Manual Update",
+        "plugin_id": "image_album",
+        "loop": 

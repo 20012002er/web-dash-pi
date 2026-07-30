@@ -41,6 +41,13 @@ def get_http_session() -> requests.Session:
         logger.debug("Initializing shared HTTP session with connection pooling")
         _HTTP_SESSION = requests.Session()
 
+        # Bypass system proxies (e.g. macOS network proxy settings) entirely.
+        # Many DashPi plugins talk to self-hosted services (Immich, Spotify, etc.)
+        # on the same machine or LAN — routing those through a system proxy causes
+        # 502 errors. ``trust_env=False`` makes requests ignore HTTP_PROXY /
+        # HTTPS_PROXY env vars AND the macOS System Configuration proxies.
+        _HTTP_SESSION.trust_env = False
+
         # Set common headers for all DashPi requests
         _HTTP_SESSION.headers.update({
             'User-Agent': 'DashPi/2.0 (https://github.com/SHagler2/DashPi/)'

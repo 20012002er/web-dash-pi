@@ -194,7 +194,9 @@
                 window.pluginStatus.showImmediate();
             }
 
-            // Send data to the server (non-blocking — track via status polling)
+            // Send data to the server. In the web edition, /update_now_async runs
+            // synchronously and returns once settings are saved — there is no
+            // background rendering thread to poll, so we show the result directly.
             try {
                 const response = await fetch(url, {method: method, body: formData});
                 const result = await response.json();
@@ -202,6 +204,43 @@
                 if (!response.ok) {
                     showResponseModal('failure', `Error!  ${result.error}`);
                     if (window.pluginStatus) window.pluginStatus.hideOnError();
+                } else {
+                    // Success — display the completed status briefly, then hide.
+                    if (window.pluginStatus) window.pluginStatus.showSuccess();
+
+                    // Auto-add plugin to the first loop (if not already in any loop).
+                    // This makes "Update Now" a one-click action: save settings AND
+                    // join the rotation. If the plugin is already in a loop, or no
+                    // loop exists, we silently skip this step.
+                    const availableLoops = {{ loops | tojson }};
+                    if (availableLoops && availableLoops.length > 0) {
+                        try {
+                            const settings = formDataToSettings(formData);
+                            const addToLoopResp = await fetch('{{ url_for("loops.add_plugin_to_loop") }}', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    loop_name: availableLoops[0],
+                                    plugin_id: '{{ plugin.id }}',
+                                    refresh_interval_seconds: 1800,
+                                    plugin_settings: settings
+                                })
+                            });
+                            // 400 typically means "already in loop" — treat as success
+                            if (addToLoopResp.ok) {
+                                showResponseModal('success', `Settings saved and added to loop "${availableLoops[0]}".`);
+                            } else if (addToLoopResp.status === 400) {
+                                showResponseModal('success', result.message || 'Settings saved. Dashboard will refresh shortly.');
+                            } else {
+                                showResponseModal('success', result.message || 'Settings saved. Dashboard will refresh shortly.');
+                            }
+                        } catch (loopErr) {
+                            console.warn('Auto-add to loop failed:', loopErr);
+                            showResponseModal('success', result.message || 'Settings saved. Dashboard will refresh shortly.');
+                        }
+                    } else {
+                        showResponseModal('success', result.message || 'Settings saved. Dashboard will refresh shortly.');
+                    }
                 }
                 closeModal('scheduleModal');
             } catch (error) {
@@ -597,12 +636,24 @@
                 refreshStartTimestamp = Date.now() / 1000;
                 updateBar(stageIcons.refreshing, 'Starting update...', 'refreshing');
                 showBar();
-                startPolling();
+                // Web edition: no background thread writes refresh_status.json,
+                // so we do NOT start file polling. The status is updated directly
+                // by showSuccess()/hideOnError() once the fetch returns.
+            },
+            showSuccess: function() {
+                refreshInProgress = false;
+                updateBar(stageIcons.displayed, 'Update complete', 'displayed');
+                showBar();
+                if (hideTimeout) clearTimeout(hideTimeout);
+                hideTimeout = setTimeout(hideBar, 4000);
             },
             hideOnError: function() {
                 refreshInProgress = false;
-                hideBar();
-                if (!toggle.checked) stopPolling();
+                updateBar(stageIcons.error, 'Update failed', 'error');
+                showBar();
+                if (hideTimeout) clearTimeout(hideTimeout);
+                hideTimeout = setTimeout(hideBar, 4000);
+                stopPolling();
             }
         };
     })();

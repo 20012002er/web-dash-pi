@@ -1,0 +1,72 @@
+{
+    "name": "DashPi-Dev",
+    "timezone": "America/New_York",
+    "time_format": "12h",
+    "scheduler_sleep_time": 60,
+    "startup": true,
+    "loop_enabled": true,
+    "loop_config": {
+        "loops": [
+            {
+                "name": "Default",
+                "start_time": "00:00",
+                "end_time": "23:59",
+                "plugin_order": [
+                    {
+                        "plugin_id": "clock",
+                        "refresh_interval_seconds": 300,
+                        "plugin_settings": {},
+                        "latest_refresh_time": null
+                    },
+                    {
+                        "plugin_id": "calendar",
+                        "refresh_interval_seconds": 1800,
+                        "plugin_settings": {
+                            "calendarColors[]": [
+                                "#007bff"
+                            ],
+                            "calendarURLs[]": [
+                                ""
+                            ],
+                            "viewMode": "dayGridMonth",
+                            "language": "en",
+                            "displayTitle": "true",
+                            "displayWeekends": "true",
+                            "displayEventTime": "true",
+                            "weekStartDay": "0",
+                            "fontSize": "normal",
+                            "selectedFrame": "None",
+                            "topMargin": "",
+                            "bottomMargin": "",
+                            "leftMargin": "",
+                            "rightMargin": "",
+                            "backgroundColor": "#ffffff",
+                            "textColor": "#000000"
+                        },
+                        "latest_refresh_time": null
+                    },
+                    {
+                        "plugin_id": "image_album",
+                        "refresh_interval_seconds": 1800,
+                        "plugin_settings": {
+                            "albumProvider": "Immich",
+                            "url": "http://127.0.0.1:2283",
+                            "album": "happy",
+                            "fitMode": "fit"
+                        },
+                        "latest_refresh_time": null
+                    }
+                ],
+                "current_plugin_index": 1,
+                "randomize": false,
+                "next_plugin_index": 2
+            }
+        ],
+        "rotation_interval_seconds": 300,
+        "active_loop": null
+    },
+    "refresh_info": {
+        "refresh_time": "2026-07-30T21:33:02.508190",
+        "refresh_type": "Manual Update",
+        "plugin_id": "calendar",
+        "loop": 

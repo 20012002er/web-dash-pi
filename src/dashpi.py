@@ -116,7 +116,11 @@ if __name__ == '__main__':
         app.secret_key = os.urandom(24).hex()
         if DEV_MODE:
             logger.info("Serving on http://0.0.0.0:8080")
-            app.run(host="0.0.0.0", port=8080, debug=True)
+            # use_reloader=False: the reloader spawns a child process that
+            # shares the config file with the parent. On shutdown both
+            # processes write_config() concurrently, which corrupts
+            # device_dev.json. Disabling the reloader keeps a single process.
+            app.run(host="0.0.0.0", port=8080, debug=True, use_reloader=False)
         else:
             logger.info("Serving on http://0.0.0.0:%d", PORT)
             serve(app, host="0.0.0.0", port=PORT, threads=4)

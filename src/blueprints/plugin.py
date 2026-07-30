@@ -11,6 +11,30 @@ logger = logging.getLogger(__name__)
 plugin_bp = Blueprint("plugin", __name__)
 
 
+def sync_settings_to_loops(device_config, plugin_id, plugin_settings):
+    """Sync saved settings to every loop that contains this plugin.
+
+    When a user clicks "Update Now" on a plugin's settings page, the settings
+    are persisted to ``plugin_last_settings_<id>``. But if the plugin is also
+    in one or more loops, the loop's ``plugin_settings`` would stay stale —
+    and since ``/api/plugin/<id>/data`` prefers loop settings, the dashboard
+    would keep using the old values. This helper keeps them in sync.
+    """
+    if not plugin_settings:
+        return
+    loop_manager = device_config.get_loop_manager()
+    if not loop_manager:
+        return
+    updated = False
+    for loop in loop_manager.loops:
+        for ref in loop.plugin_order:
+            if ref.plugin_id == plugin_id:
+                ref.plugin_settings = dict(plugin_settings)
+                updated = True
+    if updated:
+        device_config.write_config()
+
+
 @plugin_bp.route('/plugin/<plugin_id>')
 def plugin_page(plugin_id):
     """Render plugin settings page. Restores last-used or loop settings."""
@@ -79,6 +103,34 @@ def plugin_page(plugin_id):
         return render_template('plugin.html', plugin=plugin_config, **template_params)
     else:
         return "Plugin not found", 404
+
+
+@plugin_bp.route('/plugin/<plugin_id>/dashboard.html')
+def plugin_dashboard(plugin_id):
+    """Serve a plugin's dashboard.html front-end fragment.
+
+    The fragment is rendered with Jinja2 but without the base layout — it is
+    injected directly into #dashboard-container by display.js. Plugin templates
+    may reference ``{{ url_for(...) }}`` and other Jinja features.
+    """
+    device_config = current_app.config['DEVICE_CONFIG']
+    plugin_config = device_config.get_plugin(plugin_id)
+    if not plugin_config:
+        return "Plugin not found", 404
+
+    # Pass plugin_id and a few helpers to the template context.
+    context = {
+        "plugin_id": plugin_id,
+        "plugin": plugin_config,
+        "device_name": device_config.get_config("name", default="DashPi"),
+        "timezone": device_config.get_config("timezone", default="UTC"),
+        "time_format": device_config.get_config("time_format", default="12h"),
+    }
+    try:
+        return render_template(f"{plugin_id}/dashboard.html", **context)
+    except Exception as e:
+        logger.exception(f"Failed to render dashboard.html for plugin {plugin_id}: {e}")
+        return f"Failed to load dashboard: {e}", 500
 
 
 @plugin_bp.route('/images/<plugin_id>/<path:filename>')
@@ -271,8 +323,22 @@ def get_plugin_data(plugin_id):
         logger.exception(f"Failed to instantiate plugin '{plugin_id}'")
         return jsonify({"error": f"Internal error: {str(e)}"}), 500
 
-    # Determine settings: prefer last-used settings, fall back to empty dict
-    settings = device_config.get_config(f"plugin_last_settings_{plugin_id}", default={})
+    # Determine settings:
+    # 1. If the plugin is in an active loop, use the loop's plugin_settings
+    #    (these are the settings the user configured when adding to the loop).
+    # 2. Otherwise, fall back to last-used settings from the plugin settings page.
+    settings = {}
+    loop_manager = device_config.get_loop_manager()
+    if loop_manager:
+        for loop in loop_manager.loops:
+            for ref in loop.plugin_order:
+                if ref.plugin_id == plugin_id and ref.plugin_settings:
+                    settings = dict(ref.plugin_settings)
+                    break
+            if settings:
+                break
+    if not settings:
+        settings = device_config.get_config(f"plugin_last_settings_{plugin_id}", default={})
 
     try:
         data = plugin.get_data(settings, device_config)
@@ -315,6 +381,9 @@ def update_now_async():
             device_config.update_value(
                 f"plugin_last_settings_{plugin_id}", dict(plugin_settings)
             )
+            # Sync settings to any loops that contain this plugin so the
+            # dashboard uses the new values on the next data fetch.
+            sync_settings_to_loops(device_config, plugin_id, plugin_settings)
 
         if refresh_task.running:
             queued = refresh_task.queue_manual_update(
@@ -354,6 +423,9 @@ def update_now():
             device_config.update_value(
                 f"plugin_last_settings_{plugin_id}", dict(plugin_settings)
             )
+            # Sync settings to any loops that contain this plugin so the
+            # dashboard uses the new values on the next data fetch.
+            sync_settings_to_loops(device_config, plugin_id, plugin_settings)
 
         # For stocks plugin, merge in saved settings (autoRefresh, etc.) if not in form
         if plugin_id == "stocks":

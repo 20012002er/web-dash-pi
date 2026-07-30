@@ -80,7 +80,11 @@ async function pollCurrentState() {
 
         // Remaining-time / status display could be updated here if desired.
     } catch (err) {
-        console.error('Poll error:', err);
+        // Transient fetch failures (e.g. Flask dev-server restart, brief network
+        // blip) are expected — log as a warning, not an error, to avoid noise.
+        // The handlePollFailure() escalation logic still surfaces persistent
+        // outages via the error overlay.
+        console.warn('Poll failed (will retry):', err.message);
         handlePollFailure();
     }
 }

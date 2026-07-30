@@ -2,10 +2,8 @@
     "name": "DashPi-Dev",
     "timezone": "America/New_York",
     "time_format": "12h",
-    "scheduler_sleep_time": 1,
-    "startup": {
-        "welcome_message": "Welcome to DashPi"
-    },
+    "scheduler_sleep_time": 60,
+    "startup": true,
     "loop_enabled": true,
     "loop_config": {
         "loops": [
@@ -15,38 +13,33 @@
                 "end_time": "24:00",
                 "plugin_order": [
                     {
+                        "plugin_id": "clock",
+                        "refresh_interval_seconds": 1800,
+                        "plugin_settings": {},
+                        "latest_refresh_time": null
+                    },
+                    {
                         "plugin_id": "image_album",
                         "refresh_interval_seconds": 1800,
                         "plugin_settings": {
                             "albumProvider": "Immich",
-                            "url": "http://192.168.28.130:2283",
+                            "url": "http://127.0.0.1:2283",
                             "album": "happy",
-                            "fitMode": "fit"
+                            "fitMode": "fill"
                         },
                         "latest_refresh_time": null
                     }
                 ],
                 "current_plugin_index": 0,
                 "randomize": false,
-                "next_plugin_index": 0
+                "next_plugin_index": 1
             }
         ],
         "rotation_interval_seconds": 300,
         "active_loop": null
     },
     "refresh_info": {
-        "refresh_time": "2026-07-30T22:01:08.054436",
-        "refresh_type": "Data Fetch",
-        "plugin_id": "image_album"
-    },
-    "plugin_order": [],
-    "proxy": {
-        "enabled": false
-    },
-    "plugin_last_settings_image_album": {
-        "albumProvider": "Immich",
-        "url": "http://192.168.28.130:2283",
-        "album": "happy",
-        "fitMode": "fit"
-    }
-}
+        "refresh_time": "2026-07-30T21:42:09.898792",
+        "refresh_type": "Manual Update",
+        "plugin_id": "clock",
+        "loop": 
