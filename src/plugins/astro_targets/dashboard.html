@@ -1,0 +1,288 @@
+<!-- Astro Targets plugin dashboard fragment. Dark theme list of top DSO targets with moon phase. -->
+<style>
+.plugin-astro {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    box-sizing: border-box;
+    padding: 2.5vmin 3vmin;
+}
+.plugin-astro .at-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-shrink: 0;
+    padding-bottom: 1.5vmin;
+    border-bottom: 1px solid #333355;
+    margin-bottom: 1.5vmin;
+    gap: 2vmin;
+}
+.plugin-astro .at-title {
+    font-size: clamp(1.3rem, 5vmin, 3.4rem);
+    font-weight: 600;
+    line-height: 1.1;
+    margin: 0;
+}
+.plugin-astro .at-date {
+    font-size: clamp(0.85rem, 3vmin, 1.9rem);
+    opacity: 0.6;
+    margin: 0.4vmin 0 0;
+}
+.plugin-astro .at-moon {
+    text-align: right;
+    flex-shrink: 0;
+}
+.plugin-astro .at-moon-icon {
+    display: inline-block;
+    width: clamp(1.6rem, 5.5vmin, 3.6rem);
+    height: clamp(1.6rem, 5.5vmin, 3.6rem);
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-right: 0.8vmin;
+    background: radial-gradient(circle at 35% 35%, #e8e8e8, #444 70%);
+    box-shadow: inset 0 0 0 1px #333355;
+}
+.plugin-astro .at-moon-text {
+    display: inline-block;
+    vertical-align: middle;
+    font-size: clamp(0.8rem, 2.8vmin, 1.8rem);
+    opacity: 0.75;
+    line-height: 1.2;
+}
+.plugin-astro .at-moon-alt {
+    font-size: clamp(0.7rem, 2.4vmin, 1.5rem);
+    opacity: 0.5;
+    margin-top: 0.3vmin;
+}
+.plugin-astro .at-list {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2vmin;
+    overflow-y: auto;
+}
+.plugin-astro .at-card {
+    background: #16213e;
+    border-radius: 1vmin;
+    padding: 1.5vmin 2vmin;
+    display: flex;
+    align-items: center;
+    gap: 1.8vmin;
+    flex-shrink: 0;
+}
+.plugin-astro .at-type-icon {
+    width: clamp(2.4rem, 7vmin, 4.6rem);
+    height: clamp(2.4rem, 7vmin, 4.6rem);
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+.plugin-astro .at-type-icon.nebula,
+.plugin-astro .at-type-icon.supernova_remnant {
+    background: radial-gradient(circle, var(--at-color, #888) 0%, transparent 70%);
+    opacity: 0.85;
+}
+.plugin-astro .at-type-icon.galaxy,
+.plugin-astro .at-type-icon.galaxy_group {
+    background: radial-gradient(ellipse 80% 40% at 50% 50%, var(--at-color, #888), transparent 80%);
+}
+.plugin-astro .at-type-icon.cluster {
+    background:
+        radial-gradient(circle 18% at 30% 30%, var(--at-color, #888) 99%, transparent 100%),
+        radial-gradient(circle 14% at 65% 35%, var(--at-color, #888) 99%, transparent 100%),
+        radial-gradient(circle 16% at 45% 65%, var(--at-color, #888) 99%, transparent 100%),
+        radial-gradient(circle 12% at 75% 70%, var(--at-color, #888) 99%, transparent 100%);
+}
+.plugin-astro .at-info {
+    flex: 1;
+    min-width: 0;
+}
+.plugin-astro .at-line1 {
+    font-size: clamp(0.95rem, 3.4vmin, 2.2rem);
+    font-weight: 600;
+    line-height: 1.2;
+    margin: 0 0 0.4vmin;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.plugin-astro .at-id {
+    color: #4a9eff;
+}
+.plugin-astro .at-sep {
+    opacity: 0.4;
+    margin: 0 0.5vmin;
+}
+.plugin-astro .at-name {
+    color: var(--at-text, #e8e8e8);
+}
+.plugin-astro .at-line2 {
+    font-size: clamp(0.75rem, 2.6vmin, 1.6rem);
+    opacity: 0.65;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.plugin-astro .at-type-label {
+    font-size: clamp(0.7rem, 2.4vmin, 1.4rem);
+    font-weight: 600;
+    flex-shrink: 0;
+    text-align: right;
+    color: var(--at-color, #888);
+}
+.plugin-astro .at-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(1rem, 4vmin, 2.5rem);
+    opacity: 0.6;
+}
+.plugin-astro .at-error {
+    color: #ff6b6b;
+    font-size: 2rem;
+    text-align: center;
+    padding: 2rem;
+}
+</style>
+
+<div class="plugin-astro" id="plugin-astro-root">
+    <div id="plugin-astro-content"></div>
+</div>
+
+<script>
+(function () {
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+        });
+    }
+
+    function formatTime(iso) {
+        if (!iso) return '';
+        try {
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) return '';
+            return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function formatDuration(minutes) {
+        if (!minutes) return '';
+        var h = Math.floor(minutes / 60);
+        var m = minutes % 60;
+        if (h > 0) return h + 'h ' + (m < 10 ? '0' : '') + m + 'm';
+        return m + 'm';
+    }
+
+    function moonBackground(illumination, phaseName) {
+        // Approximate the illuminated fraction as a CSS radial/linear gradient.
+        var frac = (illumination || 0) / 100;
+        if (/New/.test(phaseName)) {
+            return 'radial-gradient(circle at 35% 35%, #333, #111 70%)';
+        }
+        if (/Full/.test(phaseName)) {
+            return 'radial-gradient(circle at 35% 35%, #f4f4f4, #c8c8c8 70%)';
+        }
+        // For partial phases, overlay a shadow ellipse
+        var waning = /Waning/.test(phaseName);
+        // Base lit color blended with dark by fraction
+        var lit = 'rgba(232,232,232,' + Math.max(frac, 0.15) + ')';
+        var dark = 'rgba(40,40,40,1)';
+        var pos = waning ? '0%' : '100%';
+        return 'radial-gradient(circle at 35% 35%, ' + lit + ' 0%, ' + lit + ' 60%, ' + dark + ' 100%)';
+    }
+
+    function render(data) {
+        var root = document.getElementById('plugin-astro-content');
+        if (!data) return;
+        document.getElementById('plugin-astro-root').style.backgroundColor = data.background_color || '#1a1a2e';
+        document.getElementById('plugin-astro-root').style.color = data.text_color || '#e8e8e8';
+
+        var dateStr = '';
+        if (data.date) {
+            try {
+                var d = new Date(data.date);
+                dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+            } catch (e) {
+                dateStr = data.date;
+            }
+        }
+
+        var moonText = (data.moon_illumination != null ? Math.round(data.moon_illumination) + '% ' : '') +
+            (data.moon_phase || '');
+        var moonAlt = data.moon_alt != null ? ('Moon alt: ' + Math.round(data.moon_alt) + '°') : '';
+
+        var html = '<div class="at-header">' +
+            '<div><div class="at-title">Tonight\'s Targets</div>' +
+            (dateStr ? '<div class="at-date">' + escapeHtml(dateStr) + '</div>' : '') + '</div>' +
+            '<div class="at-moon">' +
+              '<span class="at-moon-icon" style="background:' + moonBackground(data.moon_illumination, data.moon_phase) + ';"></span>' +
+              '<span class="at-moon-text">' + escapeHtml(moonText) + '</span>' +
+              (moonAlt ? '<div class="at-moon-alt">' + escapeHtml(moonAlt) + '</div>' : '') +
+            '</div>' +
+          '</div>';
+
+        var targets = data.targets || [];
+        if (targets.length === 0) {
+            html += '<div class="at-empty">No targets visible tonight</div>';
+        } else {
+            html += '<div class="at-list">';
+            targets.forEach(function (t) {
+                var typeKey = t.type || '';
+                var color = t.type_color || '#888';
+                var iconClass = 'at-type-icon ' + typeKey;
+                var line2 = (t.equipment || '') + '  |  ' +
+                    formatDuration(t.visible_minutes) + ' visible  |  peak ' + (t.altitude || 0) + '°';
+                html += '<div class="at-card" style="--at-color:' + color + ';--at-text:' + (data.text_color || '#e8e8e8') + ';">' +
+                    '<div class="' + iconClass + '"></div>' +
+                    '<div class="at-info">' +
+                      '<div class="at-line1">' +
+                        '<span class="at-id">' + escapeHtml(t.id || '') + '</span>' +
+                        '<span class="at-sep">--</span>' +
+                        '<span class="at-name">' + escapeHtml(t.name || '') + '</span>' +
+                      '</div>' +
+                      '<div class="at-line2">' + escapeHtml(line2) +
+                        (t.best_time ? '  |  best ' + escapeHtml(formatTime(t.best_time)) : '') +
+                      '</div>' +
+                    '</div>' +
+                    '<div class="at-type-label">' + escapeHtml(t.type_label || '') + '</div>' +
+                  '</div>';
+            });
+            html += '</div>';
+        }
+
+        root.innerHTML = html;
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-astro-content');
+        root.innerHTML = '<div class="at-error">' + msg + '</div>';
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        document.getElementById('plugin-astro-content').innerHTML = '';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        render(d);
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to compute astro targets.';
+        renderError(msg);
+    });
+})();
+</script>

@@ -1,0 +1,83 @@
+<div class="form-group">
+    <label for="autoRefresh" class="form-label">Auto Refresh:</label>
+    <select id="autoRefresh" name="autoRefresh" class="form-input">
+        <option value="0">Off</option>
+        <option value="1">Every 1 minute</option>
+        <option value="5">Every 5 minutes</option>
+        <option value="10">Every 10 minutes</option>
+        <option value="15">Every 15 minutes</option>
+        <option value="30">Every 30 minutes</option>
+        <option value="60" selected>Every 1 hour</option>
+        <option value="120">Every 2 hours</option>
+        <option value="240">Every 4 hours</option>
+    </select>
+    <small style="flex-basis: 100%; margin-top: 2px; color: var(--text-secondary, #888);">How often to re-fetch the image while this plugin is displayed</small>
+</div>
+
+<span style="color: var(--text-primary);">If the date field is blank it will default to today's date. This is useful when adding to a playlist.</span>
+<div class="form-group">
+    <label for="customDate" class="form-label">Date (optional)</label>
+    <input type="date" id="customDate" name="customDate" class="form-input" />
+</div>
+<div class="form-group">
+    <label for="randomizeWpotd" class="form-label">Randomize date</label>
+    <div class="toggle-container">
+        <input type="checkbox" id="randomizeWpotd" name="randomizeWpotd" class="toggle-checkbox" value="false"
+            onclick="this.value = this.checked ? 'true' : 'false'; toggleDateField(this)">
+        <label for="randomizeWpotd" class="toggle-label"></label>
+    </div>
+</div>
+
+<div class="form-group">
+    <label for="shrinkToFitWpotd" class="form-label">Shrink the image to fit the display</label>
+    <div class="toggle-container">
+        <input type="checkbox" id="shrinkToFitWpotd" name="shrinkToFitWpotd" class="toggle-checkbox" value="true"
+            onclick="this.value = this.checked ? 'true' : 'false';">
+        <label for="shrinkToFitWpotd" class="toggle-label"></label>
+    </div>
+</div>
+
+<div class="form-group">
+    <label for="fitMode" class="form-label">Display Mode</label>
+    <select id="fitMode" name="fitMode" class="form-input">
+        <option value="fit">Fit (Letterbox - Full image visible)</option>
+        <option value="fill">Fill (Crop - No black bars)</option>
+    </select>
+    <small style="flex-basis: 100%; margin-top: 2px; color: var(--text-secondary, #888);">
+        Fit: Shows entire image with black bars if needed<br>
+        Fill: Crops edges to fill screen completely
+    </small>
+</div>
+
+<script>
+    function toggleDateField(toggle) {
+        const $date = document.getElementById('customDate');
+        $date.disabled = toggle.checked;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const $toggleRandom = document.getElementById('randomizeWpotd');
+        const $date = document.getElementById('customDate');
+        const $toggleShrink = document.getElementById('shrinkToFitWpotd');
+        const $fitMode = document.getElementById('fitMode');
+
+        if (loadPluginSettings) {
+            $toggleRandom.checked = pluginSettings.randomizeWpotd === 'true';
+            $toggleRandom.value = pluginSettings.randomizeWpotd;
+            $date.value = pluginSettings.customDate || "";
+            $date.disabled = $toggleRandom.checked;
+            $toggleShrink.checked = pluginSettings.shrinkToFitWpotd === 'true';
+            $toggleShrink.value = pluginSettings.shrinkToFitWpotd;
+            $fitMode.value = pluginSettings.fitMode || 'fit';
+            document.getElementById('autoRefresh').value = pluginSettings?.autoRefresh || '60';
+
+        } else {
+            $toggleRandom.checked = false;
+            $toggleRandom.value = "false";
+            $date.value = "";
+            $toggleShrink.checked = true;
+            $toggleShrink.value = "true";
+            $fitMode.value = 'fit';
+        }
+    });
+</script>

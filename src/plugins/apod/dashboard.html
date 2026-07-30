@@ -1,0 +1,145 @@
+<!-- APOD plugin dashboard fragment. Full-screen image with title + collapsible explanation. -->
+<style>
+.plugin-apod {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    background: #000;
+    overflow: hidden;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #fff;
+}
+.plugin-apod .ap-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+.plugin-apod .ap-title-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.7) 60%, rgba(0, 0, 0, 0) 100%);
+    padding: 4vmin 3vmin 2vmin;
+    transition: max-height 0.3s ease;
+}
+.plugin-apod .ap-title {
+    font-size: clamp(1.1rem, 4vmin, 2.6rem);
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+}
+.plugin-apod .ap-date {
+    font-size: clamp(0.8rem, 2.4vmin, 1.4rem);
+    opacity: 0.7;
+    margin: 0.4vmin 0 0;
+    letter-spacing: 0.04em;
+}
+.plugin-apod .ap-explanation {
+    font-size: clamp(0.85rem, 2.6vmin, 1.5rem);
+    line-height: 1.45;
+    margin-top: 1.5vmin;
+    opacity: 0.9;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease, opacity 0.3s ease;
+}
+.plugin-apod .ap-explanation.ap-open {
+    max-height: 40vh;
+    overflow-y: auto;
+}
+.plugin-apod .ap-toggle {
+    display: inline-block;
+    margin-top: 1vmin;
+    padding: 0.6vmin 1.6vmin;
+    font-size: clamp(0.75rem, 2.2vmin, 1.2rem);
+    font-weight: 600;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 2vmin;
+    cursor: pointer;
+    user-select: none;
+}
+.plugin-apod .ap-toggle:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+.plugin-apod .ap-error {
+    color: #ff6b6b;
+    font-size: 2rem;
+    text-align: center;
+    padding: 2rem;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+</style>
+
+<div class="plugin-apod" id="plugin-apod-root">
+    <div id="plugin-apod-content"></div>
+</div>
+
+<script>
+(function () {
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    function render(data) {
+        var root = document.getElementById('plugin-apod-content');
+        if (!data) return;
+
+        var html = '<img class="ap-img" src="' + escapeHtml(data.image_url) + '" alt="" ' +
+            'onerror="this.style.display=\'none\';document.getElementById(\'plugin-apod-content\').insertAdjacentHTML(\'beforeend\',\'<div class=ap-error>Failed to load image.</div>\')" />';
+
+        html += '<div class="ap-title-bar">';
+        if (data.title) {
+            html += '<div class="ap-title">' + escapeHtml(data.title) + '</div>';
+        }
+        if (data.date) {
+            html += '<div class="ap-date">' + escapeHtml(data.date) + '</div>';
+        }
+        if (data.explanation) {
+            html += '<div class="ap-explanation" id="ap-explanation">' + escapeHtml(data.explanation) + '</div>';
+            html += '<div class="ap-toggle" id="ap-toggle">Show explanation</div>';
+        }
+        html += '</div>';
+
+        root.innerHTML = html;
+
+        // Wire up the collapsible explanation panel
+        var toggle = document.getElementById('ap-toggle');
+        var expl = document.getElementById('ap-explanation');
+        if (toggle && expl) {
+            toggle.addEventListener('click', function () {
+                var isOpen = expl.classList.toggle('ap-open');
+                toggle.textContent = isOpen ? 'Hide explanation' : 'Show explanation';
+            });
+        }
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-apod-content');
+        root.innerHTML = '<div class="ap-error">' + msg + '</div>';
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        document.getElementById('plugin-apod-content').innerHTML = '';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        render(d);
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to load APOD.';
+        renderError(msg);
+    });
+})();
+</script>

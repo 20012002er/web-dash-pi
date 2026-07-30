@@ -1,0 +1,87 @@
+<!-- Countdown plugin dashboard fragment. Centered vertical layout. -->
+<style>
+.plugin-countdown {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    text-align: center;
+    box-sizing: border-box;
+    padding: 4vmin;
+}
+.plugin-countdown .cd-title {
+    font-size: clamp(1.5rem, 5vmin, 4rem);
+    font-weight: 600;
+    margin: 0 0 1.5vmin;
+    line-height: 1.15;
+    max-width: 90%;
+}
+.plugin-countdown .cd-date {
+    font-size: clamp(1rem, 3.2vmin, 2.4rem);
+    opacity: 0.7;
+    margin: 0 0 5vmin;
+    letter-spacing: 0.05em;
+}
+.plugin-countdown .cd-days {
+    font-size: clamp(5rem, 32vmin, 24rem);
+    font-weight: 700;
+    line-height: 1;
+    margin: 0;
+}
+.plugin-countdown .cd-label {
+    font-size: clamp(1.2rem, 6vmin, 4.5rem);
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    margin: 3vmin 0 0;
+    text-transform: uppercase;
+}
+.plugin-countdown .cd-error {
+    color: #ff6b6b;
+    font-size: 2rem;
+    padding: 2rem;
+}
+</style>
+
+<div class="plugin-countdown" id="plugin-countdown-root">
+    <div id="plugin-countdown-content"></div>
+</div>
+
+<script>
+(function () {
+    function render(data) {
+        var root = document.getElementById('plugin-countdown-content');
+        if (!data) return;
+        root.style.color = data.text_color || '#000';
+        root.innerHTML =
+            '<div class="cd-title">' + (data.title || '') + '</div>' +
+            '<div class="cd-date">' + (data.target_date || '') + '</div>' +
+            '<div class="cd-days">' + (data.days != null ? data.days : '') + '</div>' +
+            '<div class="cd-label">' + (data.label || '') + '</div>';
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-countdown-content');
+        root.innerHTML = '<div class="cd-error">' + msg + '</div>';
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        document.getElementById('plugin-countdown-content').innerHTML = '';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        document.getElementById('plugin-countdown-root').style.backgroundColor = d.background_color || '#fff';
+        render(d);
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to load countdown.';
+        renderError(msg);
+    });
+})();
+</script>

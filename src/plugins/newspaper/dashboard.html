@@ -1,0 +1,100 @@
+<!-- Newspaper plugin dashboard fragment. Full-screen image with title overlay. -->
+<style>
+.plugin-newspaper {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+    background: #000;
+}
+.plugin-newspaper .np-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+.plugin-newspaper .np-title {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 3vmin 4vmin;
+    background: linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0));
+    color: #fff;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: clamp(1.2rem, 4.5vmin, 3.2rem);
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+    pointer-events: none;
+}
+.plugin-newspaper .np-error {
+    color: #ff6b6b;
+    font-size: 2rem;
+    text-align: center;
+    padding: 2rem;
+    font-family: 'Jost', sans-serif;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.plugin-newspaper .np-loading {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-family: 'Jost', sans-serif;
+    font-size: 1.5rem;
+}
+</style>
+
+<div class="plugin-newspaper" id="plugin-newspaper-root">
+    <div id="plugin-newspaper-content"></div>
+</div>
+
+<script>
+(function () {
+    function render(data) {
+        var root = document.getElementById('plugin-newspaper-content');
+        if (!data) return;
+        var titleHtml = data.title ? '<div class="np-title">' + escapeHtml(data.title) + '</div>' : '';
+        root.innerHTML =
+            '<img class="np-img" src="' + escapeAttr(data.image_url) + '" alt="' + escapeAttr(data.title || 'Newspaper') + '" ' +
+                'onerror="this.style.display=\'none\';document.getElementById(\'plugin-newspaper-content\').innerHTML=' +
+                '\'<div class=\\\'np-error\\\'>Failed to load newspaper image.</div>\'" />' +
+            titleHtml;
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-newspaper-content');
+        root.innerHTML = '<div class="np-error">' + escapeHtml(msg) + '</div>';
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+            return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+        });
+    }
+    function escapeAttr(s) {
+        return escapeHtml(s);
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        document.getElementById('plugin-newspaper-content').innerHTML =
+            '<div class="np-loading">Loading newspaper&hellip;</div>';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        render(d);
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to load newspaper.';
+        renderError(msg);
+    });
+})();
+</script>

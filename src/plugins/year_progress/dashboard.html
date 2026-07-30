@@ -1,0 +1,117 @@
+<!-- Year Progress plugin dashboard fragment. Centered with a CSS progress bar. -->
+<style>
+.plugin-year_progress {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    text-align: center;
+    box-sizing: border-box;
+    padding: 5vmin;
+}
+.plugin-year_progress .yp-year {
+    font-size: clamp(3rem, 20vmin, 14rem);
+    font-weight: 700;
+    line-height: 1.1;
+    margin: 0;
+}
+.plugin-year_progress .yp-subtitle {
+    font-size: clamp(1.2rem, 8vmin, 5rem);
+    font-weight: 600;
+    letter-spacing: 0.25em;
+    margin: 1vmin 0 7vmin;
+    text-transform: uppercase;
+    opacity: 0.85;
+}
+.plugin-year_progress .yp-bar {
+    width: 90%;
+    max-width: 1400px;
+    height: clamp(0.6rem, 4vmin, 2.5rem);
+    background: transparent;
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+.plugin-year_progress .yp-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.6s ease;
+}
+.plugin-year_progress .yp-bar-dots {
+    flex: 1;
+    height: 100%;
+    background-image: radial-gradient(circle, currentColor 1px, transparent 1.5px);
+    background-size: 12px 12px;
+    background-position: left center;
+    background-repeat: repeat-x;
+    opacity: 0.5;
+    border-radius: 999px;
+}
+.plugin-year_progress .yp-labels {
+    width: 90%;
+    max-width: 1400px;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4vmin;
+    font-size: clamp(0.9rem, 4vmin, 2.6rem);
+    letter-spacing: 0.05em;
+}
+.plugin-year_progress .yp-error {
+    color: #ff6b6b;
+    font-size: 2rem;
+    padding: 2rem;
+}
+</style>
+
+<div class="plugin-year_progress" id="plugin-year_progress-root">
+    <div id="plugin-year_progress-content"></div>
+</div>
+
+<script>
+(function () {
+    function render(data) {
+        var root = document.getElementById('plugin-year_progress-content');
+        if (!data) return;
+        root.style.color = data.text_color || '#000';
+        var pct = Math.max(0, Math.min(100, data.percent || 0));
+        root.innerHTML =
+            '<div class="yp-year">' + (data.year || '') + '</div>' +
+            '<div class="yp-subtitle">Progress</div>' +
+            '<div class="yp-bar">' +
+                '<div class="yp-bar-fill" style="width:' + pct + '%;background:' + (data.text_color || '#000') + ';"></div>' +
+                '<div class="yp-bar-dots"></div>' +
+            '</div>' +
+            '<div class="yp-labels">' +
+                '<span>' + pct + '% DONE</span>' +
+                '<span>' + (data.days_left != null ? data.days_left : '') + ' DAYS LEFT</span>' +
+            '</div>';
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-year_progress-content');
+        root.innerHTML = '<div class="yp-error">' + msg + '</div>';
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        document.getElementById('plugin-year_progress-content').innerHTML = '';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        document.getElementById('plugin-year_progress-root').style.backgroundColor = d.background_color || '#fff';
+        render(d);
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to load year progress.';
+        renderError(msg);
+    });
+})();
+</script>

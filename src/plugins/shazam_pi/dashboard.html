@@ -1,0 +1,224 @@
+<!-- ShazamPi plugin dashboard fragment. EXPERIMENTAL.
+
+     The backend get_data() only returns an idle status. The actual audio
+     capture happens here in the frontend via getUserMedia + Web Audio API.
+     A 5-second clip is recorded, then POSTed to the (not-yet-implemented)
+     /api/plugin/shazam_pi/identify endpoint. The UI cycles through
+     idle -> listening -> sending -> identified/error states. -->
+<style>
+.plugin-shazam {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #1e1e26;
+    color: #fff;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    box-sizing: border-box;
+    padding: 4vmin;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+.plugin-shazam .shz-icon {
+    width: clamp(8rem, 30vmin, 18rem);
+    height: clamp(8rem, 30vmin, 18rem);
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 3vmin;
+    background: #2a2a35;
+    box-shadow: 0 0 30px rgba(241, 122, 36, 0.25);
+}
+.plugin-shazam .shz-title {
+    font-size: clamp(1.4rem, 6vmin, 3.5rem);
+    font-weight: 700;
+    margin: 0 0 1vmin;
+}
+.plugin-shazam .shz-subtitle {
+    font-size: clamp(0.9rem, 3.4vmin, 1.8rem);
+    opacity: 0.7;
+    margin: 0 0 4vmin;
+    max-width: 60ch;
+}
+.plugin-shazam .shz-btn {
+    background: #1DB954;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: clamp(1rem, 3vmin, 1.6rem) clamp(2.5rem, 8vmin, 4.5rem);
+    font-size: clamp(1rem, 4vmin, 2rem);
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.2s;
+    font-family: inherit;
+}
+.plugin-shazam .shz-btn:hover:not(:disabled) { background: #1ed760; }
+.plugin-shazam .shz-btn:active:not(:disabled) { transform: scale(0.97); }
+.plugin-shazam .shz-btn:disabled { opacity: 0.6; cursor: default; }
+.plugin-shazam .shz-btn.listening { background: #dc3545; }
+.plugin-shazam .shz-status {
+    margin-top: 3vmin;
+    font-size: clamp(0.9rem, 3.2vmin, 1.6rem);
+    opacity: 0.8;
+    min-height: 1.2em;
+}
+.plugin-shazam .shz-song {
+    margin-top: 2vmin;
+    text-align: center;
+}
+.plugin-shazam .shz-song-title {
+    font-size: clamp(1.2rem, 5vmin, 3rem);
+    font-weight: 700;
+}
+.plugin-shazam .shz-song-artist {
+    font-size: clamp(1rem, 4vmin, 2.2rem);
+    opacity: 0.8;
+}
+.plugin-shazam .shz-error {
+    color: #ff6b6b;
+    margin-top: 3vmin;
+    font-size: clamp(0.9rem, 3.2vmin, 1.6rem);
+}
+/* Animated pulse ring while listening */
+.plugin-shazam .shz-pulse {
+    position: absolute;
+    border: 3px solid rgba(220, 53, 80, 0.5);
+    border-radius: 50%;
+    width: clamp(8rem, 30vmin, 18rem);
+    height: clamp(8rem, 30vmin, 18rem);
+    top: calc(50% - clamp(8rem, 30vmin, 18rem) / 2);
+    animation: shz-pulse 1.5s ease-out infinite;
+    display: none;
+    pointer-events: none;
+}
+.plugin-shazam.listening .shz-pulse { display: block; }
+@keyframes shz-pulse {
+    0% { transform: scale(1); opacity: 0.7; }
+    100% { transform: scale(1.6); opacity: 0; }
+}
+</style>
+
+<div class="plugin-shazam" id="plugin-shazam-root">
+    <div class="shz-pulse"></div>
+    <img class="shz-icon" id="shz-icon" src="resources/default.jpg" alt="" onerror="this.style.visibility='hidden'" />
+    <div class="shz-title" id="shz-title">ShazamPi</div>
+    <div class="shz-subtitle" id="shz-subtitle"></div>
+    <button class="shz-btn" id="shz-btn">Start Listening</button>
+    <div class="shz-status" id="shz-status"></div>
+    <div class="shz-error" id="shz-error" style="display:none;"></div>
+</div>
+
+<script>
+(function () {
+    var root = document.getElementById('plugin-shazam-root');
+    var icon = document.getElementById('shz-icon');
+    var titleEl = document.getElementById('shz-title');
+    var subtitleEl = document.getElementById('shz-subtitle');
+    var btn = document.getElementById('shz-btn');
+    var statusEl = document.getElementById('shz-status');
+    var errorEl = document.getElementById('shz-error');
+    var recordingDuration = 5;
+
+    function setStatus(msg) { statusEl.textContent = msg || ''; }
+    function setError(msg) {
+        errorEl.textContent = msg || '';
+        errorEl.style.display = msg ? 'block' : 'none';
+    }
+
+    function setIdle() {
+        root.classList.remove('listening');
+        btn.textContent = 'Start Listening';
+        btn.disabled = false;
+        btn.classList.remove('listening');
+        titleEl.textContent = 'ShazamPi';
+        icon.src = 'resources/default.jpg';
+    }
+
+    // Record a clip via getUserMedia + MediaRecorder. Returns a Promise<Blob>.
+    function recordClip(seconds) {
+        return navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+            var chunks = [];
+            var recorder = new MediaRecorder(stream);
+            return new Promise(function (resolve, reject) {
+                recorder.ondataavailable = function (e) { if (e.data.size) chunks.push(e.data); };
+                recorder.onstop = function () {
+                    stream.getTracks().forEach(function (t) { t.stop(); });
+                    resolve(new Blob(chunks, { type: recorder.mimeType || 'audio/webm' }));
+                };
+                recorder.onerror = function (ev) { reject(ev.error || new Error('recorder error')); };
+                recorder.start();
+                setTimeout(function () {
+                    try { recorder.stop(); } catch (e) { reject(e); }
+                }, seconds * 1000);
+            });
+        });
+    }
+
+    // POST the clip to the (not-yet-implemented) identify endpoint.
+    function identifyClip(blob) {
+        var fd = new FormData();
+        fd.append('audio', blob, 'clip.webm');
+        return fetch('/api/plugin/shazam_pi/identify', { method: 'POST', body: fd })
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            });
+    }
+
+    function startListening() {
+        setError('');
+        root.classList.add('listening');
+        btn.classList.add('listening');
+        btn.textContent = 'Listening...';
+        btn.disabled = true;
+        titleEl.textContent = 'Listening for music...';
+        setStatus('Recording ' + recordingDuration + 's of audio...');
+
+        recordClip(recordingDuration).then(function (blob) {
+            setStatus('Sending to backend for identification...');
+            titleEl.textContent = 'Identifying...';
+            return identifyClip(blob);
+        }).then(function (result) {
+            // Expected backend response shape:
+            //   { status: "identified", song, artist, album_art }
+            if (result && result.status === 'identified') {
+                titleEl.textContent = result.song || 'Identified';
+                subtitleEl.textContent = result.artist || '';
+                if (result.album_art) icon.src = result.album_art;
+                setStatus('');
+                btn.textContent = 'Listen Again';
+                btn.disabled = false;
+            } else if (result && result.status === 'error') {
+                setIdle();
+                setError(result.error || 'Identification failed');
+            } else {
+                setIdle();
+                setError('Backend endpoint not implemented yet');
+            }
+            root.classList.remove('listening');
+        }).catch(function (err) {
+            root.classList.remove('listening');
+            setIdle();
+            // The endpoint is not yet implemented; surface a friendly message.
+            setError('Identification failed: ' + (err && err.message ? err.message : err) +
+                '. Backend endpoint not implemented yet.');
+        });
+    }
+
+    btn.addEventListener('click', startListening);
+
+    window.addEventListener('plugin-data', function (e) {
+        var data = (e.detail && e.detail.data) || {};
+        if (data.recording_duration) recordingDuration = data.recording_duration;
+        if (data.message) subtitleEl.textContent = data.message;
+        if (data.status === 'idle') setIdle();
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        setIdle();
+        setError((e.detail && e.detail.error) || 'Failed to load ShazamPi.');
+    });
+})();
+</script>

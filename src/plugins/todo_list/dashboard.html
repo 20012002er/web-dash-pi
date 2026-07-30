@@ -1,0 +1,197 @@
+<!-- To-do list plugin dashboard fragment. Lists side by side or stacked. -->
+<style>
+.plugin-todo_list {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    box-sizing: border-box;
+    padding: 2.5vmin;
+}
+.plugin-todo_list .td-title {
+    font-size: clamp(1.3rem, 5.5vmin, 4rem);
+    font-weight: 600;
+    text-align: center;
+    margin: 0 0 2vmin;
+    line-height: 1.15;
+}
+.plugin-todo_list .td-lists {
+    flex: 1;
+    display: flex;
+    gap: 2vmin;
+    min-height: 0;
+}
+.plugin-todo_list .td-lists.stacked {
+    flex-direction: column;
+}
+.plugin-todo_list .td-list {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    border: 2px solid currentColor;
+    border-radius: 2vmin;
+    padding: 2vmin;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.plugin-todo_list .td-list-title {
+    font-size: clamp(1rem, 4vmin, 2.8rem);
+    font-weight: 600;
+    margin: 0 0 1.5vmin;
+    line-height: 1.2;
+    flex-shrink: 0;
+}
+.plugin-todo_list .td-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    flex: 1;
+    overflow: hidden;
+}
+.plugin-todo_list .td-item {
+    font-size: clamp(0.9rem, 3.5vmin, 2.4rem);
+    line-height: 1.3;
+    padding: 0.8vmin 0;
+    border-bottom: 1px solid currentColor;
+    opacity: 0.9;
+    display: flex;
+    align-items: baseline;
+    gap: 1vmin;
+    word-break: break-word;
+}
+.plugin-todo_list .td-item:last-child {
+    border-bottom: none;
+}
+.plugin-todo_list .td-marker {
+    flex-shrink: 0;
+    min-width: 1.2em;
+}
+.plugin-todo_list .td-error {
+    color: #ff6b6b;
+    font-size: 2rem;
+    padding: 2rem;
+    text-align: center;
+}
+.plugin-todo_list .td-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(1rem, 4vmin, 3rem);
+    opacity: 0.6;
+}
+</style>
+
+<div class="plugin-todo_list" id="plugin-todo_list-root">
+    <div id="plugin-todo_list-content"></div>
+</div>
+
+<script>
+(function () {
+    var MARKERS = {
+        'disc': '\u2022',
+        'square': '\u25AA',
+        "'\\25C6  '": '\u25C6',
+        'decimal': null,
+        'lower-roman': null,
+        'lower-alpha': null
+    };
+
+    function marker(style, idx) {
+        if (style === 'decimal') return (idx + 1) + '.';
+        if (style === 'lower-roman') return toRoman(idx + 1) + '.';
+        if (style === 'lower-alpha') return String.fromCharCode(97 + idx) + '.';
+        return MARKERS[style] || '\u2022';
+    }
+
+    function toRoman(num) {
+        var map = [['M',1000],['CM',900],['D',500],['CD',400],['C',100],['XC',90],['L',50],['XL',40],['X',10],['IX',9],['V',5],['IV',4],['I',1]];
+        var res = '';
+        for (var i = 0; i < map.length; i++) {
+            while (num >= map[i][1]) { res += map[i][0]; num -= map[i][1]; }
+        }
+        return res;
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+            return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+        });
+    }
+
+    function render(data) {
+        var root = document.getElementById('plugin-todo_list-content');
+        if (!data) return;
+        root.style.color = data.text_color || '#000';
+        var lists = data.lists || [];
+        var isWide = window.innerWidth >= window.innerHeight && lists.length > 1;
+        var stackedClass = isWide ? '' : ' stacked';
+
+        var html = '';
+        if (data.title) {
+            html += '<div class="td-title">' + escapeHtml(data.title) + '</div>';
+        }
+
+        if (lists.length === 0) {
+            html += '<div class="td-empty">No lists configured</div>';
+        } else {
+            html += '<div class="td-lists' + stackedClass + '">';
+            for (var i = 0; i < lists.length; i++) {
+                html += '<div class="td-list">';
+                if (lists[i].title) {
+                    html += '<div class="td-list-title">' + escapeHtml(lists[i].title) + '</div>';
+                }
+                var items = lists[i].items || [];
+                html += '<ul class="td-items">';
+                for (var j = 0; j < items.length; j++) {
+                    var m = marker(data.list_style, j);
+                    html += '<li class="td-item">' +
+                        (m ? '<span class="td-marker">' + escapeHtml(m) + '</span>' : '') +
+                        '<span>' + escapeHtml(items[j]) + '</span>' +
+                        '</li>';
+                }
+                html += '</ul>';
+                html += '</div>';
+            }
+            html += '</div>';
+        }
+
+        root.innerHTML = html;
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-todo_list-content');
+        root.innerHTML = '<div class="td-error">' + msg + '</div>';
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        document.getElementById('plugin-todo_list-content').innerHTML = '';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        document.getElementById('plugin-todo_list-root').style.backgroundColor = d.background_color || '#fff';
+        render(d);
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to load to-do list.';
+        renderError(msg);
+    });
+
+    // Re-render on resize to switch between stacked/side-by-side layouts.
+    var lastData = null;
+    window.addEventListener('plugin-data', function (e) {
+        lastData = e.detail && e.detail.data;
+    });
+    if (!window._pluginTodoResize) {
+        window._pluginTodoResize = true;
+        window.addEventListener('resize', function () { if (lastData) render(lastData); });
+    }
+})();
+</script>

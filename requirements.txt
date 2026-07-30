@@ -1,0 +1,16 @@
+Flask
+waitress
+python-dotenv
+requests
+feedparser
+pytz
+psutil
+pyyaml
+recurring-ical-events
+icalendar
+beautifulsoup4
+Pillow
+openai
+google-genai
+yfinance
+akshare

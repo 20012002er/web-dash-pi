@@ -1,0 +1,113 @@
+<!-- Comic plugin dashboard fragment. Centered image with optional title/caption. -->
+<style>
+.plugin-comic {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: #fff;
+    color: #000;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    box-sizing: border-box;
+    padding: 2vmin;
+}
+.plugin-comic .cm-title {
+    font-size: clamp(1rem, 3.6vmin, 2.6rem);
+    font-weight: 600;
+    text-align: center;
+    margin: 0 0 1vmin;
+    line-height: 1.2;
+    max-width: 96%;
+}
+.plugin-comic .cm-img-wrap {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.plugin-comic .cm-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+}
+.plugin-comic .cm-caption {
+    font-size: clamp(0.85rem, 2.8vmin, 2rem);
+    text-align: center;
+    margin: 1vmin 0 0;
+    line-height: 1.25;
+    max-width: 96%;
+    opacity: 0.85;
+    font-style: italic;
+}
+.plugin-comic .cm-error {
+    color: #ff6b6b;
+    font-size: 2rem;
+    text-align: center;
+    padding: 2rem;
+}
+.plugin-comic .cm-loading {
+    color: #888;
+    font-size: 1.5rem;
+}
+</style>
+
+<div class="plugin-comic" id="plugin-comic-root">
+    <div id="plugin-comic-content"></div>
+</div>
+
+<script>
+(function () {
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+            return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+        });
+    }
+
+    function render(data) {
+        var root = document.getElementById('plugin-comic-content');
+        if (!data) return;
+        var show = data.show_caption !== false;
+        var titleHtml = (show && data.title) ? '<div class="cm-title">' + escapeHtml(data.title) + '</div>' : '';
+        var captionHtml = (show && data.caption) ? '<div class="cm-caption">' + escapeHtml(data.caption) + '</div>' : '';
+        var fontSize = data.caption_font_size ? ('font-size:' + data.caption_font_size + 'px;') : '';
+        if (fontSize) {
+            // Hint only; the clamp-based sizes above take precedence on small screens.
+        }
+
+        root.innerHTML =
+            titleHtml +
+            '<div class="cm-img-wrap">' +
+                '<img class="cm-img" src="' + escapeHtml(data.image_url) + '" alt="' + escapeHtml(data.title || 'Comic') + '" ' +
+                    'onerror="this.parentElement.innerHTML=\'<div class=&quot;cm-error&quot;>Failed to load comic image.</div>\'" />' +
+            '</div>' +
+            captionHtml;
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-comic-content');
+        root.innerHTML = '<div class="cm-error">' + escapeHtml(msg) + '</div>';
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        document.getElementById('plugin-comic-content').innerHTML =
+            '<div class="cm-loading">Loading comic&hellip;</div>';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        render(d);
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to load comic.';
+        renderError(msg);
+    });
+})();
+</script>

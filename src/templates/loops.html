@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project_name }} - v{{ version }} - Loops</title>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('dashpi-v2-theme') ||
+                         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/main.css') }}">
+    <script src="{{ url_for('static', filename='scripts/loops_manager.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='scripts/response_modal.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='scripts/dark_mode.js') }}"></script>
+</head>
+<body>
+    <div class="frame">
+        <header class="header">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button onclick="window.location.href='{{ url_for('main.main_page') }}'" class="back-button">← Back to Main</button>
+                <div class="title-block">
+                    <span class="project-label">{{ project_name }} - v{{ version }}</span>
+                    <h1>Loops</h1>
+                </div>
+            </div>
+            <div class="header-actions">
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; color: var(--text-secondary); white-space: nowrap;">
+                    <input type="checkbox" id="showLoopsStatus" style="width: 16px; height: 16px; cursor: pointer;" />
+                    Live Status
+                </label>
+                <button class="settings-button dark-mode-toggle" title="Toggle Dark Mode" aria-label="Toggle Dark Mode"></button>
+                <button class="header-button" onclick="openCreateLoopModal()">+ New Loop</button>
+            </div>
+        </header>
+
+        <!-- Live Refresh Status -->
+        <div id="loopsStatus" class="live-status-card">
+            <span id="loopsStatusIcon" class="live-status-icon">&#9889;</span>
+            <span id="loopsStatusText" class="live-status-text">Ready</span>
+        </div>
+
+        <!-- Global Rotation Interval Setting -->
+        <div class="status-dashboard-card">
+            <h3 class="countdown-label" style="font-size: 14px; text-transform: none; margin-bottom: 8px;">Display Rotation</h3>
+            <p class="plugin-info-label" style="text-transform: none; margin-bottom: 12px;">How often the display switches to the next plugin</p>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="number" id="rotation-interval" value="{{ (loop_config.rotation_interval_seconds / 60) | int }}"
+                       min="1" class="form-input" style="width: 80px;">
+                <select id="rotation-unit" class="form-input">
+                    <option value="minute">Minutes</option>
+                    <option value="hour">Hours</option>
+                </select>
+                <button onclick="saveRotationInterval()" class="action-button">Save</button>
+            </div>
+        </div>
+
+        <!-- Override Banner -->
+        {% if loop_override %}
+        <div id="loopsOverrideBanner" class="override-banner visible">
+            {% if loop_override.type == 'loop' %}
+            <span class="override-icon">🔄</span>
+            <span><span class="override-label">Override</span> <span class="override-name">{{ loop_override.loop_name }}</span></span>
+            {% elif loop_override.type == 'plugin' %}
+            <span class="override-icon">📌</span>
+            <span><span class="override-label">Pinned</span> <span class="override-name">{{ plugins.get(loop_override.plugin_id, {}).get('display_name', loop_override.plugin_id) }}</span></span>
+            {% endif %}
+            <button onclick="clearOverride()" class="override-dismiss">Resume Schedule</button>
+        </div>
+        {% endif %}
+
+        <!-- Loops List -->
+        <div class="loop-list">
+            {% for loop_item in loop_config.loops %}
+            <div class="featured-image-card loop-item">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div>
+                        <h2 style="margin: 0; font-size: 18px; font-weight: 600; color: var(--text-primary);">{{ loop_item.name }}</h2>
+                        {% if loop_item.name == loop_config.active_loop %}
+                        <span style="display: inline-block; margin-left: 10px; padding: 4px 10px; background: var(--success-color); color: white; border-radius: 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px;">ACTIVE</span>
+                        {% endif %}
+                        <div style="margin-top: 6px; font-size: 13px; color: var(--text-secondary); font-weight: 400;">{{ loop_item.start_time }} - {{ loop_item.end_time }}</div>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        {% set is_override = loop_override and loop_override.type == 'loop' and loop_override.loop_name == loop_item.name %}
+                        <button data-loop-name="{{ loop_item.name }}"
+                                data-is-override="{{ 'true' if is_override else 'false' }}"
+                                class="activate-loop-btn action-button"
+                                style="padding: 8px 14px; font-size: 14px; font-weight: 500; background: {{ 'var(--warning-border, #ffc107)' if is_override else 'var(--accent-primary, #007bff)' }}; color: {{ 'var(--warning-text, #856404)' if is_override else 'white' }};"
+                                title="{{ 'Deactivate override' if is_override else 'Activate this loop as override' }}">
+                            {{ 'Deactivate' if is_override else 'Activate' }}
+                        </button>
+                        <button data-loop-name="{{ loop_item.name }}"
+                                id="randomize-{{ loop_item.name }}"
+                                class="toggle-randomize-btn action-button"
+                                style="padding: 8px 14px; font-size: 14px; font-weight: 500; background: {{ 'var(--success-color)' if loop_item.randomize else 'var(--button-bg)' }}; color: {{ 'white' if loop_item.randomize else 'var(--text-primary)' }};"
+                                title="Toggle random plugin order">
+                            {{ 'Random' if loop_item.randomize else 'Sequential' }}
+                        </button>
+                        <button data-loop-name="{{ loop_item.name }}"
+                                data-start-time="{{ loop_item.start_time }}"
+                                data-end-time="{{ loop_item.end_time }}"
+                                class="edit-loop-btn action-button"
+                                style="background: var(--button-bg); padding: 8px 14px; font-size: 14px; font-weight: 500; color: var(--text-primary);">
+                            Edit
+                        </button>
+                        <button data-loop-name="{{ loop_item.name }}"
+                                class="delete-loop-btn action-button"
+                                style="background: #dc3545 !important; padding: 8px 14px; font-size: 14px; font-weight: 500; color: white !important;">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Plugin Order -->
+                <div class="plugin-order" style="margin-top: 16px;">
+                    <h4 style="font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 0 0 12px 0;">
+                        Plugins ({{ loop_item.plugin_order|length }})
+                        <span style="font-weight: 400; color: var(--text-secondary); margin-left: 8px; font-size: 13px;">(Drag to reorder)</span>
+                    </h4>
+                    {% if loop_item.plugin_order %}
+                    <div class="plugin-list" data-loop-name="{{ loop_item.name }}" style="display: flex; flex-direction: column; gap: 8px;">
+                        {% for plugin_ref in loop_item.plugin_order %}
+                        <div class="plugin-ref-item"
+                             data-plugin-id="{{ plugin_ref.plugin_id }}"
+                             draggable="true"
+                             style="display: flex; align-items: center; padding: 12px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; gap: 12px; cursor: move; transition: all 0.2s ease;">
+                            <span style="font-size: 18px; color: var(--text-secondary);">⋮⋮</span>
+                            <div style="width: 40px; height: 40px; border-radius: 8px; overflow: hidden; border: 2px solid var(--border-color); background: white;">
+                                <img src="{{ url_for('plugin.image', plugin_id=plugin_ref.plugin_id, filename='icon.png') }}"
+                                     alt="icon" style="width: 100%; height: 100%; object-fit: cover; padding: 4px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; font-size: 15px; color: var(--text-primary); margin-bottom: 4px;">{{ plugins.get(plugin_ref.plugin_id, {}).get('display_name', plugin_ref.plugin_id) }}</div>
+                                <div style="font-size: 13px; color: var(--text-secondary); font-weight: 400;">Refreshes every {% if plugin_ref.refresh_interval_seconds < 60 %}{{ plugin_ref.refresh_interval_seconds | int }}s{% else %}{{ (plugin_ref.refresh_interval_seconds / 60) | int }} min{% endif %}</div>
+                            </div>
+                            <button type="button"
+                                    onclick="refreshPluginNow('{{ loop_item.name }}', '{{ plugin_ref.plugin_id }}')"
+                                    class="action-button"
+                                    style="padding: 6px 12px; font-size: 13px; background: var(--accent-primary) !important; font-weight: 500; color: white !important;"
+                                    title="Refresh and display this screen now">
+                                ⟳ Now
+                            </button>
+                            <button type="button"
+                                    data-loop-name="{{ loop_item.name }}"
+                                    data-plugin-id="{{ plugin_ref.plugin_id }}"
+                                    data-refresh-interval="{{ plugin_ref.refresh_interval_seconds }}"
+                                    data-plugin-settings="{{ plugin_ref.plugin_settings | tojson | forceescape }}"
+                                    class="edit-plugin-btn action-button"
+                                    style="padding: 6px 12px; font-size: 13px; background: var(--button-bg) !important; font-weight: 500; color: var(--text-primary) !important;">
+                                Edit
+                            </button>
+                            <button onclick="removePluginFromLoop('{{ loop_item.name }}', '{{ plugin_ref.plugin_id }}')"
+                                    class="action-button"
+                                    style="padding: 6px 12px; font-size: 13px; background: #dc3545 !important; font-weight: 500; color: white !important;"
+                                    title="Remove this plugin from the loop">
+                                Remove
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="plugin-info-label" style="text-transform: none; font-style: italic; text-align: center; padding: 20px 0;">No plugins in this loop yet</p>
+                    {% endif %}
+
+                    <!-- Add Plugin Button -->
+                    <button onclick="openAddPluginModal('{{ loop_item.name }}')"
+                            class="action-button"
+                            style="margin-top: 12px; width: 100%; background: var(--success-color); padding: 10px; font-size: 14px; font-weight: 500;">
+                        + Add Plugin
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Create/Edit Loop Modal -->
+    <div id="loopModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);">
+        <div class="modal-content" style="background: white; margin: 10% auto; padding: 20px; width: 400px; border-radius: 8px;">
+            <h2 id="modalTitle">Create Loop</h2>
+            <form id="loopForm">
+                <input type="hidden" id="oldLoopName">
+                <div style="margin: 15px 0;">
+                    <label>Name:</label>
+                    <input type="text" id="loopName" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div style="margin: 15px 0;">
+                    <label>Start Time:</label>
+                    <input type="time" id="startTime" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div style="margin: 15px 0;">
+                    <label>End Time:</label>
+                    <input type="time" id="endTime" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" style="flex: 1; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Save</button>
+                    <button type="button" onclick="closeLoopModal()" style="flex: 1; padding: 10px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Plugin Modal -->
+    <div id="pluginModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);">
+        <div class="modal-content" style="background: white; margin: 10% auto; padding: 20px; width: 400px; border-radius: 8px;">
+            <h2>Add Plugin to Loop</h2>
+            <form id="pluginForm">
+                <input type="hidden" id="targetLoopName">
+                <div style="margin: 15px 0;">
+                    <label>Plugin:</label>
+                    <select id="pluginSelect" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="">Select a plugin...</option>
+                        {% for plugin in all_plugins|sort(attribute='display_name') %}
+                        <option value="{{ plugin.id }}">{{ plugin.display_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" style="flex: 1; padding: 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Next</button>
+                    <button type="button" onclick="closePluginModal()" style="flex: 1; padding: 10px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Response Modal (reuse from existing) -->
+    {% include 'response_modal.html' %}
+
+    <!-- Global Refresh Status Polling -->
+    <script>
+    // Exposed as window.loopsStatus so refreshPluginNow can interact with it
+    window.loopsStatus = (function() {
+        const STORAGE_KEY = 'dashpi-v2-show-loops-status';
+        const toggle = document.getElementById('showLoopsStatus');
+        const bar = document.getElementById('loopsStatus');
+        const icon = document.getElementById('loopsStatusIcon');
+        const text = document.getElementById('loopsStatusText');
+
+        let hideTimeout = null;
+        let refreshInProgress = false;
+        let refreshStartTimestamp = 0;
+        let pollTimer = null;
+
+        // Restore toggle state from localStorage (default to checked)
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            toggle.checked = saved === null ? true : saved === 'true';
+        } catch (e) { toggle.checked = true; }
+
+        function applyToggleState() {
+            if (toggle.checked) {
+                bar.classList.remove('status-disabled');
+                startPolling();
+            } else {
+                stopPolling();
+                hideBar();
+                bar.classList.add('status-disabled');
+            }
+        }
+
+        toggle.addEventListener('change', function() {
+            try { localStorage.setItem(STORAGE_KEY, toggle.checked); } catch (e) {}
+            applyToggleState();
+        });
+
+        function showBar() {
+            bar.style.visibility = 'visible';
+        }
+
+        function hideBar() {
+            bar.style.visibility = 'hidden';
+        }
+
+        function setBarStyle(stage) {
+            // Status bar uses consistent styling; icons convey state
+        }
+
+        const stageIcons = {
+            refreshing:  '&#9889;',  generating:  '&#9889;',
+            processing:  '&#9889;',  displaying:  '&#10024;',
+            displayed:   '&#9989;',    idle:        '&#128164;',
+            error:       '&#128308;',  starting:    '&#9889;',
+            recording:   '&#127908;',  detecting:   '&#129504;',
+            detected:    '&#127925;',  identifying: '&#128269;',
+            rendering:   '&#127912;',  unidentified:'&#10067;',
+        };
+
+        const activeStages = new Set([
+            'refreshing', 'generating', 'processing', 'displaying',
+            'starting', 'recording', 'detecting', 'detected', 'identifying', 'rendering'
+        ]);
+        const terminalStages = new Set(['displayed', 'idle', 'error', 'unidentified']);
+
+        function updateBar(stageIcon, message, stage) {
+            icon.innerHTML = stageIcon;
+            text.textContent = message || stage;
+            setBarStyle(stage);
+        }
+
+        async function pollStatus() {
+            try {
+                const r = await fetch('/static/images/plugins/refresh_status.json?t=' + Date.now());
+                if (!r.ok) return;
+                const data = await r.json();
+                if (!data || typeof data.stage !== 'string') return;
+
+                const isActive = activeStages.has(data.stage);
+                const isTerminal = terminalStages.has(data.stage);
+
+                if (isActive) {
+                    // Track the start of a new refresh cycle
+                    if (!refreshInProgress) {
+                        refreshInProgress = true;
+                        refreshStartTimestamp = data.timestamp;
+                    }
+                    if (hideTimeout) { clearTimeout(hideTimeout); hideTimeout = null; }
+
+                    // Try plugin-specific status.json for granular stages (only if plugin has one)
+                    if (data.plugin_id && data.has_plugin_status) {
+                        try {
+                            const pr = await fetch('/images/' + encodeURIComponent(data.plugin_id) + '/status.json?t=' + Date.now());
+                            if (pr.ok) {
+                                const ps = await pr.json();
+                                if (ps && typeof ps.timestamp === 'number' && ps.timestamp >= refreshStartTimestamp - 2) {
+                                    updateBar(stageIcons[ps.stage] || stageIcons.generating, ps.detail, ps.stage);
+                                    showBar();
+                                    return;
+                                }
+                            }
+                        } catch (e) {}
+                    }
+
+                    updateBar(stageIcons[data.stage] || stageIcons.generating, data.detail, data.stage);
+                    showBar();
+                    return;
+                }
+
+                // Refresh just completed — show result then auto-hide
+                if (refreshInProgress && isTerminal) {
+                    refreshInProgress = false;
+                    updateBar(stageIcons[data.stage] || stageIcons.idle, data.detail, data.stage);
+                    showBar();
+                    if (hideTimeout) clearTimeout(hideTimeout);
+                    hideTimeout = setTimeout(hideBar, 4000);
+                }
+            } catch (e) {}
+        }
+
+        function startPolling() {
+            if (pollTimer) return;
+            pollTimer = setInterval(pollStatus, 800);
+        }
+
+        function stopPolling() {
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+        }
+
+        // Apply initial toggle state
+        applyToggleState();
+
+        // Public API for refreshPluginNow to call
+        return {
+            showImmediate: function(pluginId) {
+                refreshInProgress = true;
+                refreshStartTimestamp = Date.now() / 1000;
+                updateBar(stageIcons.refreshing, 'Updating ' + pluginId + '...', 'refreshing');
+                showBar();
+                // Temporarily start polling even if toggle is off
+                startPolling();
+            },
+            hideOnError: function() {
+                refreshInProgress = false;
+                hideBar();
+                if (!toggle.checked) stopPolling();
+            }
+        };
+    })();
+    </script>
+</body>
+</html>

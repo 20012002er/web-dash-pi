@@ -1,0 +1,57 @@
+<div class="form-group">
+    <label for="albumProvider" class="form-label">Album Provider:</label>
+    <select id="albumProvider" name="albumProvider" class="form-input" onchange="updateTitleOptions(this.value)">
+        <option value="Immich">Immich</option>
+    </select>
+</div>
+
+<div class="form-group">
+    <label for="url" class="form-label">Base URL:</label>
+    <input type="text" id="url" name="url" placeholder="Type something..." required class="form-input">
+     <label for="album" class="form-label">Album Name:</label>
+    <input type="text" id="album" name="album" placeholder="Type something..." required class="form-input">
+</div>
+
+<div class="form-group">
+    <label for="fitMode" class="form-label">Display Mode</label>
+    <select id="fitMode" name="fitMode" class="form-input">
+        <option value="fit">Fit (Letterbox - Full image visible)</option>
+        <option value="fill">Fill (Crop - No black bars)</option>
+        <option value="blur">Blur Background (Full image with blurred fill)</option>
+    </select>
+    <small style="flex-basis: 100%; margin-top: 2px; color: var(--text-secondary, #888);">
+        Fit: Shows entire image with black bars if needed<br>
+        Fill: Crops edges to fill screen completely<br>
+        Blur: Shows entire image with blurred background fill
+    </small>
+</div>
+
+<div class="form-group">
+    <label for="randomize" class="form-label">Random Order:</label>
+    <div class="toggle-container">
+        <input type="checkbox" id="randomize" name="randomize" class="toggle-checkbox" value="false"
+            onclick="this.value = this.checked ? 'true' : 'false'">
+        <label for="randomize" class="toggle-label"></label>
+    </div>
+</div>
+
+<script>
+    // populate form values from plugin settings
+    document.addEventListener('DOMContentLoaded', () => {
+        if (loadPluginSettings) {
+            document.getElementById('url').value = pluginSettings.url;
+            document.getElementById('album').value = pluginSettings.album;
+            document.getElementById('randomize').checked = pluginSettings.randomize === 'true';
+
+            // Migrate old padImage setting to new fitMode
+            const fitMode = document.getElementById('fitMode');
+            if (pluginSettings.fitMode) {
+                fitMode.value = pluginSettings.fitMode;
+            } else if (pluginSettings.padImage === 'true') {
+                fitMode.value = pluginSettings.backgroundOption === 'blur' ? 'blur' : 'fit';
+            } else {
+                fitMode.value = 'fill';
+            }
+        }
+    });
+</script>

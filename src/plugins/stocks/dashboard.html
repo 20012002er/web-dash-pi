@@ -1,0 +1,271 @@
+<!-- Stocks plugin dashboard fragment. Responsive grid of stock cards with sparklines. -->
+<style>
+.plugin-stocks {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #e0e0e0;
+    background: #1a1a1a;
+    box-sizing: border-box;
+    padding: 2.5vmin 3vmin;
+}
+.plugin-stocks .st-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: 1.5vmin;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+}
+.plugin-stocks .st-title {
+    font-size: clamp(1.2rem, 4.5vmin, 3rem);
+    font-weight: 700;
+    margin: 0;
+}
+.plugin-stocks .st-market-status {
+    font-size: clamp(0.8rem, 2.6vmin, 1.6rem);
+    font-weight: 600;
+    padding: 0.4vmin 1.2vmin;
+    border-radius: 1vmin;
+}
+.plugin-stocks .st-market-open {
+    color: #00c853;
+    background: rgba(0, 200, 83, 0.12);
+}
+.plugin-stocks .st-market-closed {
+    color: #ff5252;
+    background: rgba(255, 82, 82, 0.12);
+}
+.plugin-stocks .st-grid {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    gap: 1.5vmin;
+    padding-top: 1.5vmin;
+}
+.plugin-stocks .st-grid.cols-1 { grid-template-columns: 1fr; }
+.plugin-stocks .st-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.plugin-stocks .st-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.plugin-stocks .st-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 1.2vmin;
+    padding: 1.5vmin 2vmin;
+    background: rgba(255, 255, 255, 0.03);
+    min-width: 0;
+    overflow: hidden;
+}
+.plugin-stocks .st-card-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1vmin;
+}
+.plugin-stocks .st-symbol {
+    font-size: clamp(1.1rem, 4.5vmin, 3rem);
+    font-weight: 700;
+    line-height: 1;
+}
+.plugin-stocks .st-name {
+    font-size: clamp(0.7rem, 2.4vmin, 1.4rem);
+    opacity: 0.65;
+    margin-top: 0.4vmin;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.plugin-stocks .st-price {
+    font-size: clamp(1.1rem, 4.5vmin, 3rem);
+    font-weight: 700;
+    line-height: 1;
+    text-align: right;
+}
+.plugin-stocks .st-change {
+    font-size: clamp(0.85rem, 3vmin, 1.8rem);
+    font-weight: 600;
+    text-align: right;
+    margin-top: 0.4vmin;
+}
+.plugin-stocks .st-positive { color: #00c853; }
+.plugin-stocks .st-negative { color: #ff5252; }
+.plugin-stocks .st-spark-wrap {
+    position: relative;
+    height: clamp(2.5rem, 12vmin, 6rem);
+    margin-top: 1vmin;
+}
+.plugin-stocks .st-details {
+    display: flex;
+    justify-content: space-between;
+    gap: 1vmin;
+    font-size: clamp(0.7rem, 2.2vmin, 1.2rem);
+    opacity: 0.7;
+    margin-top: 0.8vmin;
+}
+.plugin-stocks .st-error {
+    color: #ff6b6b;
+    font-size: 2rem;
+    text-align: center;
+    padding: 2rem;
+}
+</style>
+
+<div class="plugin-stocks" id="plugin-stocks-root">
+    <div id="plugin-stocks-content"></div>
+</div>
+
+<script>
+(function () {
+    var chartJsLoaded = false;
+    var sparkCharts = [];
+
+    function loadChartJs(cb) {
+        if (window.Chart) { chartJsLoaded = true; cb(); return; }
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+        s.onload = function () { chartJsLoaded = true; cb(); };
+        s.onerror = function () { console.warn('Chart.js failed to load'); cb(); };
+        document.head.appendChild(s);
+    }
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    function formatPrice(v) {
+        if (v == null) return 'N/A';
+        return '$' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function destroyCharts() {
+        for (var i = 0; i < sparkCharts.length; i++) {
+            try { sparkCharts[i].destroy(); } catch (e) {}
+        }
+        sparkCharts = [];
+    }
+
+    function render(data) {
+        var root = document.getElementById('plugin-stocks-content');
+        if (!data) return;
+        destroyCharts();
+
+        var stocks = data.stocks || [];
+        var n = stocks.length;
+        var columns = n <= 1 ? 1 : (n <= 2 ? 2 : (n <= 4 ? 2 : 3));
+
+        var html = '<div class="st-header">' +
+            '<div class="st-title">' + escapeHtml(data.title || 'Stock Prices') + '</div>' +
+            '<div class="st-market-status ' + (data.market_open ? 'st-market-open' : 'st-market-closed') + '">' +
+                (data.market_open ? 'Market Open' : 'Market Closed') +
+            '</div>' +
+            '</div>';
+
+        html += '<div class="st-grid cols-' + columns + '">';
+
+        for (var i = 0; i < n; i++) {
+            var s = stocks[i];
+            var posClass = s.is_positive ? 'st-positive' : 'st-negative';
+            var sign = s.change >= 0 ? '+' : '';
+            var changeText = sign + s.change + ' (' + sign + s.change_percent + '%)';
+
+            html += '<div class="st-card">' +
+                '<div>' +
+                    '<div class="st-card-top">' +
+                        '<div>' +
+                            '<div class="st-symbol">' + escapeHtml(s.symbol) + '</div>' +
+                            '<div class="st-name">' + escapeHtml(s.name || '') + '</div>' +
+                        '</div>' +
+                        '<div>' +
+                            '<div class="st-price">' + escapeHtml(formatPrice(s.price)) + '</div>' +
+                            '<div class="st-change ' + posClass + '">' + escapeHtml(changeText) + '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="st-spark-wrap"><canvas id="st-spark-' + i + '"></canvas></div>' +
+                '<div class="st-details">' +
+                    '<span>Vol: ' + escapeHtml(s.volume || 'N/A') + '</span>' +
+                    '<span>H: ' + escapeHtml(formatPrice(s.high)) + ' / L: ' + escapeHtml(formatPrice(s.low)) + '</span>' +
+                '</div>' +
+                '<div class="st-details">' +
+                    '<span>52W H: ' + escapeHtml(formatPrice(s.week52_high)) + '</span>' +
+                    '<span>52W L: ' + escapeHtml(formatPrice(s.week52_low)) + '</span>' +
+                '</div>' +
+            '</div>';
+        }
+        html += '</div>';
+
+        root.innerHTML = html;
+
+        // Draw sparklines
+        if (window.Chart) {
+            for (var j = 0; j < n; j++) {
+                drawSpark(j, stocks[j]);
+            }
+        }
+    }
+
+    function drawSpark(idx, stock) {
+        var canvas = document.getElementById('st-spark-' + idx);
+        if (!canvas || !window.Chart) return;
+        var hist = stock.hist || [];
+        if (hist.length < 2) return;
+
+        var color = stock.is_positive ? '#00c853' : '#ff5252';
+
+        sparkCharts.push(new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: hist.map(function (_, i) { return i; }),
+                datasets: [{
+                    data: hist,
+                    borderColor: color,
+                    backgroundColor: color + '22',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                scales: { x: { display: false }, y: { display: false } },
+                animation: false
+            }
+        }));
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-stocks-content');
+        root.innerHTML = '<div class="st-error">' + msg + '</div>';
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        destroyCharts();
+        document.getElementById('plugin-stocks-content').innerHTML = '';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        // Ensure Chart.js is loaded before rendering so sparklines appear.
+        if (!chartJsLoaded) {
+            loadChartJs(function () { render(d); });
+        } else {
+            render(d);
+        }
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to load stocks.';
+        renderError(msg);
+    });
+})();
+</script>

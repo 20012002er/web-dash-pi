@@ -1,0 +1,326 @@
+<!-- GitHub plugin dashboard fragment. Renders one of three views based on data.type:
+     contributions -> GitHub-style heatmap grid (CSS grid)
+     sponsors      -> grid of sponsor avatars + names
+     stars         -> line chart of star history (Chart.js CDN) -->
+<style>
+.plugin-github {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    box-sizing: border-box;
+    padding: 2.5vmin 3vmin;
+}
+.plugin-github .gh-title {
+    font-size: clamp(1rem, 4.5vmin, 3rem);
+    font-weight: 600;
+    text-align: center;
+    margin: 0 0 2vmin;
+    line-height: 1.15;
+    flex-shrink: 0;
+}
+.plugin-github .gh-error {
+    color: #ff6b6b;
+    font-size: 2rem;
+    padding: 2rem;
+    text-align: center;
+}
+
+/* ---------- Contributions heatmap ---------- */
+.plugin-github .gh-contrib {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+.plugin-github .gh-contrib-metrics {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 2vmin;
+    flex-shrink: 0;
+}
+.plugin-github .gh-metric {
+    text-align: center;
+}
+.plugin-github .gh-metric-value {
+    font-size: clamp(1.4rem, 5vmin, 3rem);
+    font-weight: 700;
+    line-height: 1.1;
+}
+.plugin-github .gh-metric-label {
+    font-size: clamp(0.7rem, 2.4vmin, 1.4rem);
+    opacity: 0.7;
+}
+.plugin-github .gh-grid-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+.plugin-github .gh-grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(7, 1fr);
+    grid-auto-columns: 1fr;
+    gap: 2px;
+    height: 100%;
+    min-width: 100%;
+}
+.plugin-github .gh-cell {
+    border-radius: 2px;
+    min-width: 8px;
+    min-height: 8px;
+}
+
+/* ---------- Sponsors grid ---------- */
+.plugin-github .gh-sponsors {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(clamp(8rem, 22vmin, 16rem), 1fr));
+    gap: 2.5vmin;
+    align-content: start;
+    padding: 1vmin;
+}
+.plugin-github .gh-sponsor {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+.plugin-github .gh-sponsor-avatar {
+    width: clamp(3rem, 12vmin, 8rem);
+    height: clamp(3rem, 12vmin, 8rem);
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 1vmin;
+    background: #ebedf0;
+}
+.plugin-github .gh-sponsor-name {
+    font-size: clamp(0.8rem, 2.8vmin, 1.6rem);
+    font-weight: 600;
+    line-height: 1.2;
+    word-break: break-word;
+}
+.plugin-github .gh-sponsor-tier {
+    font-size: clamp(0.7rem, 2.2vmin, 1.2rem);
+    opacity: 0.65;
+}
+.plugin-github .gh-sponsors-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(1rem, 4vmin, 2.5rem);
+    opacity: 0.6;
+}
+
+/* ---------- Stars chart ---------- */
+.plugin-github .gh-stars {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.plugin-github .gh-stars-count {
+    font-size: clamp(2.5rem, 18vmin, 12rem);
+    font-weight: 700;
+    line-height: 1;
+}
+.plugin-github .gh-stars-label {
+    font-size: clamp(1rem, 4vmin, 2.5rem);
+    opacity: 0.7;
+    margin-bottom: 2vmin;
+}
+.plugin-github .gh-stars-canvas-wrap {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    max-height: 50%;
+}
+</style>
+
+<div class="plugin-github" id="plugin-github-root">
+    <div id="plugin-github-content"></div>
+</div>
+
+<script>
+(function () {
+    var chartInstance = null;
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    function levelForCount(count, max) {
+        if (!count || max === 0) return 0;
+        var level = Math.floor((count / max) * 4);
+        return Math.max(1, Math.min(4, level));
+    }
+
+    function renderContributions(data) {
+        var colors = data.colors || ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'];
+        var weeks = data.weeks || [];
+        var max = 1;
+        for (var wi = 0; wi < weeks.length; wi++) {
+            for (var di = 0; di < weeks[wi].length; di++) {
+                if (weeks[wi][di].count > max) max = weeks[wi][di].count;
+            }
+        }
+
+        var html = '<div class="gh-contrib">';
+        html += '<div class="gh-contrib-metrics">';
+        html += metricHtml(data.total, 'Contributions');
+        html += metricHtml(data.streak, 'Current Streak');
+        html += '</div>';
+        html += '<div class="gh-grid-scroll"><div class="gh-grid">';
+        for (var w = 0; w < weeks.length; w++) {
+            for (var d = 0; d < weeks[w].length; d++) {
+                var day = weeks[w][d];
+                var level = levelForCount(day.count, max);
+                var color = colors[level] || colors[0];
+                html += '<div class="gh-cell" style="background:' + color + '" title="' +
+                    escapeHtml(day.date) + ': ' + day.count + '"></div>';
+            }
+        }
+        html += '</div></div></div>';
+        return html;
+    }
+
+    function metricHtml(value, label) {
+        return '<div class="gh-metric"><div class="gh-metric-value">' + escapeHtml(value) +
+            '</div><div class="gh-metric-label">' + escapeHtml(label) + '</div></div>';
+    }
+
+    function renderSponsors(data) {
+        var sponsors = data.sponsors || [];
+        if (sponsors.length === 0) {
+            return '<div class="gh-sponsors-empty">No sponsors yet</div>';
+        }
+        var html = '<div class="gh-sponsors">';
+        for (var i = 0; i < sponsors.length; i++) {
+            var s = sponsors[i];
+            var avatar = s.avatar_url
+                ? '<img class="gh-sponsor-avatar" src="' + escapeHtml(s.avatar_url) + '" alt="" onerror="this.style.visibility=\'hidden\'" />'
+                : '<div class="gh-sponsor-avatar"></div>';
+            html += '<div class="gh-sponsor">' + avatar +
+                '<div class="gh-sponsor-name">' + escapeHtml(s.name || '') + '</div>' +
+                (s.tier ? '<div class="gh-sponsor-tier">' + escapeHtml(s.tier) + '</div>' : '') +
+                '</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    function renderStars(data) {
+        var html = '<div class="gh-stars">';
+        html += '<div class="gh-stars-label">Stars</div>';
+        html += '<div class="gh-stars-count">' + escapeHtml(data.current_count) + '</div>';
+        html += '<div class="gh-stars-canvas-wrap"><canvas id="gh-stars-canvas"></canvas></div>';
+        html += '</div>';
+        return html;
+    }
+
+    function drawStarsChart(data) {
+        var canvas = document.getElementById('gh-stars-canvas');
+        if (!canvas) return;
+        var history = data.history || [];
+
+        if (typeof Chart === 'undefined') {
+            // Chart.js not yet loaded; retry shortly.
+            setTimeout(function () { drawStarsChart(data); }, 300);
+            return;
+        }
+        if (chartInstance) {
+            chartInstance.destroy();
+            chartInstance = null;
+        }
+        var labels = history.map(function (p) { return p.date; });
+        var counts = history.map(function (p) { return p.count; });
+        var textColor = data.text_color || '#000';
+        chartInstance = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Stars',
+                    data: counts,
+                    borderColor: '#216e39',
+                    backgroundColor: 'rgba(48, 161, 78, 0.15)',
+                    fill: true,
+                    tension: 0.25,
+                    pointRadius: 3,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: textColor, maxTicksLimit: 6 } },
+                    y: { beginAtZero: true, ticks: { color: textColor } }
+                }
+            }
+        });
+    }
+
+    function ensureChartJs() {
+        if (typeof Chart !== 'undefined') return;
+        if (document.getElementById('gh-chartjs-script')) return;
+        var s = document.createElement('script');
+        s.id = 'gh-chartjs-script';
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+        document.head.appendChild(s);
+    }
+
+    function render(data) {
+        var root = document.getElementById('plugin-github-content');
+        if (!data) return;
+        root.style.color = data.text_color || '#000';
+
+        var html = '<div class="gh-title">GitHub/' + escapeHtml(data.username || '') + '</div>';
+        if (data.type === 'contributions') {
+            html += renderContributions(data);
+        } else if (data.type === 'sponsors') {
+            html += renderSponsors(data);
+        } else if (data.type === 'stars') {
+            html += renderStars(data);
+        }
+        root.innerHTML = html;
+
+        if (data.type === 'stars') {
+            ensureChartJs();
+            drawStarsChart(data);
+        }
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-github-content');
+        root.innerHTML = '<div class="gh-error">' + msg + '</div>';
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        var root = document.getElementById('plugin-github-content');
+        if (root) root.innerHTML = '';
+        if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        document.getElementById('plugin-github-root').style.backgroundColor = d.background_color || '#fff';
+        render(d);
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to load GitHub data.';
+        renderError(msg);
+    });
+})();
+</script>

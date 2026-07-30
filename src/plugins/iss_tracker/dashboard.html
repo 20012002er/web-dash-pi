@@ -1,0 +1,359 @@
+<!-- ISS Tracker plugin dashboard fragment. Leaflet.js world map with ISS position, ground track, and info panel. -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<style>
+.plugin-iss {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    background: #0f1420;
+    overflow: hidden;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.plugin-iss #iss-map {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: #0a1020;
+}
+.plugin-iss .iss-panel {
+    position: absolute;
+    left: 1.5vmin;
+    top: 1.5vmin;
+    z-index: 10;
+    background: rgba(10, 16, 32, 0.82);
+    color: #fff;
+    border-radius: 1vmin;
+    padding: 1.5vmin 2vmin;
+    backdrop-filter: blur(4px);
+    max-width: 60vw;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+}
+.plugin-iss .iss-over {
+    font-size: clamp(0.95rem, 3.4vmin, 2.2rem);
+    font-weight: 600;
+    color: #64c864;
+    margin: 0 0 0.4vmin;
+    line-height: 1.2;
+}
+.plugin-iss .iss-coord {
+    font-size: clamp(0.8rem, 2.6vmin, 1.6rem);
+    opacity: 0.85;
+    margin: 0 0 0.3vmin;
+    line-height: 1.3;
+}
+.plugin-iss .iss-stats {
+    font-size: clamp(0.75rem, 2.5vmin, 1.5rem);
+    opacity: 0.7;
+    margin: 0;
+    line-height: 1.3;
+}
+.plugin-iss .iss-crew {
+    position: absolute;
+    right: 1.5vmin;
+    top: 1.5vmin;
+    z-index: 10;
+    background: rgba(10, 16, 32, 0.82);
+    color: #fff;
+    border-radius: 1vmin;
+    padding: 1.2vmin 1.8vmin;
+    backdrop-filter: blur(4px);
+    text-align: center;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+}
+.plugin-iss .iss-crew-num {
+    font-size: clamp(1.6rem, 6vmin, 3.6rem);
+    font-weight: 700;
+    color: #64c864;
+    line-height: 1;
+}
+.plugin-iss .iss-crew-label {
+    font-size: clamp(0.7rem, 2.4vmin, 1.4rem);
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 0.3vmin;
+}
+.plugin-iss .iss-pass {
+    position: absolute;
+    left: 1.5vmin;
+    right: 1.5vmin;
+    bottom: 1.5vmin;
+    z-index: 10;
+    background: rgba(10, 16, 32, 0.82);
+    color: #fff;
+    border-radius: 1vmin;
+    padding: 1.5vmin 2vmin;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    display: none;
+}
+.plugin-iss .iss-pass-title {
+    font-size: clamp(0.9rem, 3.2vmin, 2rem);
+    font-weight: 600;
+    margin: 0 0 0.4vmin;
+    color: #64c864;
+}
+.plugin-iss .iss-pass-detail {
+    font-size: clamp(0.78rem, 2.6vmin, 1.6rem);
+    opacity: 0.85;
+    margin: 0;
+    line-height: 1.4;
+}
+.plugin-iss .iss-pass.passing .iss-pass-title {
+    color: #ffd200;
+}
+.plugin-iss .iss-error {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ff6b6b;
+    font-size: 2rem;
+    text-align: center;
+    padding: 2rem;
+    background: rgba(0,0,0,0.7);
+}
+/* Leaflet marker customization */
+.plugin-iss .iss-icon {
+    background: transparent;
+    border: none;
+}
+.plugin-iss .iss-icon-inner {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #ff3232;
+    border: 2px solid #fff;
+    box-shadow: 0 0 12px rgba(255,50,50,0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+}
+.plugin-iss .observer-icon-inner {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #4a9eff;
+    border: 2px solid #fff;
+}
+</style>
+
+<div class="plugin-iss" id="plugin-iss-root">
+    <div id="iss-map"></div>
+    <div class="iss-panel" id="iss-panel">
+        <div class="iss-over" id="iss-over">Loading…</div>
+        <div class="iss-coord" id="iss-coord"></div>
+        <div class="iss-stats" id="iss-stats"></div>
+    </div>
+    <div class="iss-crew" id="iss-crew">
+        <div class="iss-crew-num" id="iss-crew-num">—</div>
+        <div class="iss-crew-label">Crew</div>
+    </div>
+    <div class="iss-pass" id="iss-pass">
+        <div class="iss-pass-title" id="iss-pass-title"></div>
+        <div class="iss-pass-detail" id="iss-pass-detail"></div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script>
+(function () {
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+        });
+    }
+
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+    function formatDateTime(iso) {
+        if (!iso) return '';
+        try {
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) return iso;
+            return d.toLocaleString(undefined, {
+                month: 'short', day: 'numeric',
+                hour: 'numeric', minute: '2-digit'
+            });
+        } catch (e) {
+            return iso;
+        }
+    }
+
+    function formatDuration(seconds) {
+        if (!seconds && seconds !== 0) return '';
+        var m = Math.floor(seconds / 60);
+        var s = Math.floor(seconds % 60);
+        return m + 'm ' + (s < 10 ? '0' : '') + s + 's';
+    }
+
+    function convertAlt(km, units) {
+        if (units === 'imperial') return Math.round(km * 0.621371) + ' mi';
+        return Math.round(km) + ' km';
+    }
+
+    function convertSpeed(kmh, units) {
+        if (units === 'imperial') return Math.round(kmh * 0.621371) + ' mph';
+        return Math.round(kmh) + ' km/h';
+    }
+
+    var map = null;
+    var issMarker = null;
+    var observerMarker = null;
+    var trackLine = null;
+    var footprintCircle = null;
+
+    function ensureMap() {
+        if (map) return map;
+        map = L.map('iss-map', {
+            worldCopyJump: true,
+            zoomControl: false,
+            attributionControl: false,
+        }).setView([20, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 8,
+            subdomains: 'abc',
+        }).addTo(map);
+        return map;
+    }
+
+    function render(data) {
+        if (!data) return;
+        var m = ensureMap();
+        var units = data.units || 'metric';
+
+        var pos = data.iss_position || {};
+        var lat = pos.lat, lng = pos.lng;
+
+        // ISS marker (custom div icon)
+        if (!issMarker) {
+            issMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'iss-icon',
+                    html: '<div class="iss-icon-inner">ISS</div>',
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14],
+                }),
+                zIndexOffset: 1000,
+            }).addTo(m);
+        } else {
+            issMarker.setLatLng([lat, lng]);
+        }
+
+        // Footprint circle (visual indicator of coverage area)
+        if (footprintCircle) {
+            m.removeLayer(footprintCircle);
+        }
+        var altKm = pos.altitude_km || 420;
+        var footprintDeg = Math.acos(6371 / (6371 + altKm)) * 180 / Math.PI;
+        footprintCircle = L.circle([lat, lng], {
+            radius: footprintDeg * 111000, // rough km→m conversion at equator
+            color: '#64c864',
+            weight: 1,
+            fillColor: '#64c864',
+            fillOpacity: 0.05,
+        }).addTo(m);
+
+        // Ground track polyline
+        var track = data.ground_track || [];
+        if (track.length >= 2) {
+            var latlngs = track.map(function (p) { return [p.lat, p.lng]; });
+            if (trackLine) {
+                trackLine.setLatLngs(latlngs);
+            } else {
+                trackLine = L.polyline(latlngs, {
+                    color: '#ffc800',
+                    weight: 1.5,
+                    opacity: 0.8,
+                    dashArray: '4 4',
+                }).addTo(m);
+            }
+        }
+
+        // Observer marker
+        var obs = data.observer || {};
+        if (obs.lat != null && obs.lng != null) {
+            if (!observerMarker) {
+                observerMarker = L.marker([obs.lat, obs.lng], {
+                    icon: L.divIcon({
+                        className: 'iss-icon',
+                        html: '<div class="observer-icon-inner"></div>',
+                        iconSize: [16, 16],
+                        iconAnchor: [8, 8],
+                    }),
+                }).addTo(m);
+            } else {
+                observerMarker.setLatLng([obs.lat, obs.lng]);
+            }
+        }
+
+        // Center the map on the ISS, keeping a reasonable zoom
+        m.setView([lat, lng], m.getZoom() || 3);
+
+        // Info panel
+        document.getElementById('iss-over').textContent = 'Over: ' + (data.location_name || '—');
+        var latDir = lat >= 0 ? 'N' : 'S';
+        var lngDir = lng >= 0 ? 'E' : 'W';
+        document.getElementById('iss-coord').textContent =
+            Math.abs(lat).toFixed(1) + '°' + latDir + ', ' + Math.abs(lng).toFixed(1) + '°' + lngDir;
+        var stats = '';
+        if (pos.altitude_km != null) stats += 'Alt: ' + convertAlt(pos.altitude_km, units);
+        if (pos.speed_kmh != null) stats += '  |  Speed: ' + convertSpeed(pos.speed_kmh, units);
+        if (obs.city) stats += '  |  Obs: ' + obs.city;
+        document.getElementById('iss-stats').textContent = stats;
+
+        // Crew count
+        document.getElementById('iss-crew-num').textContent = data.crew_count != null ? data.crew_count : '—';
+
+        // Next pass panel
+        var passEl = document.getElementById('iss-pass');
+        if (data.next_pass) {
+            passEl.style.display = 'block';
+            passEl.classList.toggle('passing', !!data.is_passing);
+            var title = data.is_passing ? 'PASS IN PROGRESS' :
+                (data.next_pass.visible ? 'Next Visible Pass' : 'Next Pass');
+            document.getElementById('iss-pass-title').textContent = title;
+            var detail = formatDateTime(data.next_pass.start_time) +
+                '  |  Max elev: ' + (data.next_pass.max_elevation || 0) + '°' +
+                '  |  Duration: ' + formatDuration(data.next_pass.duration) +
+                (data.next_pass.visible ? '  |  Visible' : '');
+            document.getElementById('iss-pass-detail').textContent = detail;
+        } else {
+            passEl.style.display = 'none';
+        }
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-iss-root');
+        var err = document.createElement('div');
+        err.className = 'iss-error';
+        err.textContent = msg;
+        root.appendChild(err);
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        // Initialize map eagerly so tiles start loading
+        ensureMap();
+        document.getElementById('iss-over').textContent = 'Loading…';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        render(d);
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to load ISS tracker.';
+        renderError(msg);
+    });
+})();
+</script>

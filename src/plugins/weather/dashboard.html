@@ -1,0 +1,378 @@
+<!-- Weather plugin dashboard fragment. Multi-panel weather display. -->
+<style>
+.plugin-weather {
+    width: 100vw;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto auto;
+    gap: 1.5vmin;
+    box-sizing: border-box;
+    padding: 2.5vmin 3vmin;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #e8e8e8;
+    background: #1a1e2e;
+    overflow: hidden;
+}
+.plugin-weather .wx-header {
+    text-align: center;
+    line-height: 1.15;
+}
+.plugin-weather .wx-location {
+    font-size: clamp(1.2rem, 4.5vmin, 3rem);
+    font-weight: 700;
+    margin: 0;
+}
+.plugin-weather .wx-date {
+    font-size: clamp(0.85rem, 2.6vmin, 1.6rem);
+    opacity: 0.7;
+    margin: 0.4vmin 0 0;
+    letter-spacing: 0.04em;
+}
+.plugin-weather .wx-current {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 3vmin;
+    padding: 1.5vmin 0;
+}
+.plugin-weather .wx-current .wx-icon {
+    width: clamp(5rem, 18vmin, 14rem);
+    height: clamp(5rem, 18vmin, 14rem);
+    object-fit: contain;
+}
+.plugin-weather .wx-current .wx-temp-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+}
+.plugin-weather .wx-current .wx-temp {
+    font-size: clamp(3rem, 16vmin, 11rem);
+    font-weight: 700;
+    line-height: 1;
+}
+.plugin-weather .wx-current .wx-temp-unit {
+    font-size: clamp(1rem, 4vmin, 2.4rem);
+    vertical-align: top;
+    margin-left: 0.3vmin;
+    opacity: 0.85;
+}
+.plugin-weather .wx-current .wx-desc {
+    font-size: clamp(1rem, 3.4vmin, 2.2rem);
+    opacity: 0.85;
+    margin-top: 0.6vmin;
+}
+.plugin-weather .wx-current .wx-feels {
+    font-size: clamp(0.85rem, 2.8vmin, 1.8rem);
+    opacity: 0.7;
+    margin-top: 0.3vmin;
+}
+.plugin-weather .wx-current .wx-hilo {
+    font-size: clamp(0.85rem, 2.8vmin, 1.8rem);
+    opacity: 0.7;
+    margin-top: 0.3vmin;
+}
+.plugin-weather .wx-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1vmin;
+    align-self: center;
+}
+.plugin-weather .wx-metric {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 1vmin;
+    padding: 1vmin 0.5vmin;
+}
+.plugin-weather .wx-metric .wx-metric-label {
+    font-size: clamp(0.7rem, 2vmin, 1.3rem);
+    opacity: 0.65;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+.plugin-weather .wx-metric .wx-metric-value {
+    font-size: clamp(0.95rem, 3vmin, 2rem);
+    font-weight: 600;
+    margin-top: 0.3vmin;
+}
+.plugin-weather .wx-chart-wrap {
+    position: relative;
+    min-height: 0;
+    height: clamp(8rem, 26vmin, 18rem);
+}
+.plugin-weather .wx-forecast {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1vmin;
+}
+.plugin-weather .wx-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 1vmin;
+    padding: 1vmin 0.4vmin;
+}
+.plugin-weather .wx-day .wx-day-name {
+    font-size: clamp(0.75rem, 2.2vmin, 1.4rem);
+    font-weight: 600;
+    opacity: 0.85;
+}
+.plugin-weather .wx-day .wx-day-icon {
+    width: clamp(2.5rem, 8vmin, 5rem);
+    height: clamp(2.5rem, 8vmin, 5rem);
+    object-fit: contain;
+    margin: 0.3vmin 0;
+}
+.plugin-weather .wx-day .wx-day-temps {
+    font-size: clamp(0.75rem, 2.4vmin, 1.5rem);
+    font-weight: 600;
+}
+.plugin-weather .wx-day .wx-day-temps .wx-day-low {
+    opacity: 0.55;
+}
+.plugin-weather .wx-day .wx-moon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4vmin;
+    margin-top: 0.4vmin;
+    font-size: clamp(0.65rem, 2vmin, 1.2rem);
+    opacity: 0.7;
+}
+.plugin-weather .wx-day .wx-moon img {
+    width: clamp(1rem, 3.5vmin, 2rem);
+    height: clamp(1rem, 3.5vmin, 2rem);
+    object-fit: contain;
+}
+.plugin-weather .wx-alerts {
+    background: rgba(180, 30, 30, 0.85);
+    color: #fff;
+    text-align: center;
+    padding: 0.8vmin 1vmin;
+    border-radius: 0.6vmin;
+    font-weight: 600;
+    font-size: clamp(0.85rem, 2.6vmin, 1.6rem);
+}
+.plugin-weather .wx-error {
+    color: #ff6b6b;
+    font-size: 2rem;
+    text-align: center;
+    padding: 2rem;
+}
+</style>
+
+<div class="plugin-weather" id="plugin-weather-root">
+    <div id="plugin-weather-content"></div>
+</div>
+
+<script>
+(function () {
+    var chart = null;
+    var chartJsLoaded = false;
+    var pendingData = null;
+
+    function loadChartJs(cb) {
+        if (window.Chart) { chartJsLoaded = true; cb(); return; }
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+        s.onload = function () { chartJsLoaded = true; cb(); };
+        s.onerror = function () { logger && console.warn('Chart.js failed to load'); cb(); };
+        document.head.appendChild(s);
+    }
+
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    function metricBlock(label, value) {
+        if (value === null || value === undefined || value === '') return '';
+        return '<div class="wx-metric">' +
+            '<div class="wx-metric-label">' + escapeHtml(label) + '</div>' +
+            '<div class="wx-metric-value">' + escapeHtml(value) + '</div>' +
+            '</div>';
+    }
+
+    function render(data) {
+        var root = document.getElementById('plugin-weather-content');
+        if (!data) return;
+
+        var cur = data.current || {};
+        var units = data.units || {};
+        var tempUnit = units.temperature || '';
+        var speedUnit = units.speed || '';
+
+        // Header
+        var html = '<div class="wx-header">' +
+            '<div class="wx-location">' + escapeHtml(data.location_name || '') + '</div>' +
+            '<div class="wx-date">' + escapeHtml(data.current_date || '') + '</div>' +
+            '</div>';
+
+        // Current conditions
+        var iconSrc = cur.icon_code ? ('/images/weather/' + encodeURIComponent(cur.icon_code) + '.png') : '';
+        var hi = (cur.hi !== null && cur.hi !== undefined) ? cur.hi + '°' : '--°';
+        var lo = (cur.lo !== null && cur.lo !== undefined) ? cur.lo + '°' : '--°';
+
+        html += '<div class="wx-current">';
+        if (iconSrc) {
+            html += '<img class="wx-icon" src="' + iconSrc + '" alt="" onerror="this.style.display=\'none\'" />';
+        }
+        html += '<div class="wx-temp-block">' +
+            '<div><span class="wx-temp">' + escapeHtml(cur.temp != null ? cur.temp : '--') + '</span>' +
+            (tempUnit ? '<span class="wx-temp-unit">' + escapeHtml(tempUnit) + '</span>' : '') + '</div>' +
+            (cur.description ? '<div class="wx-desc">' + escapeHtml(cur.description) + '</div>' : '') +
+            (cur.feels_like != null ? '<div class="wx-feels">Feels Like ' + escapeHtml(cur.feels_like) + '°</div>' : '') +
+            '<div class="wx-hilo">Hi ' + escapeHtml(hi) + ' / Lo ' + escapeHtml(lo) + '</div>' +
+            '</div>';
+
+        // Metrics column (sunrise/sunset, wind, humidity, AQI/UV)
+        var metricsHtml = '';
+        if (cur.sunrise) metricsHtml += metricBlock('Sunrise', cur.sunrise);
+        if (cur.sunset) metricsHtml += metricBlock('Sunset', cur.sunset);
+        if (cur.wind_speed != null) {
+            metricsHtml += metricBlock('Wind', cur.wind_speed + ' ' + speedUnit + ' ' + (cur.wind_dir || ''));
+        }
+        if (cur.humidity != null) metricsHtml += metricBlock('Humidity', cur.humidity + '%');
+        if (cur.aqi != null) metricsHtml += metricBlock('AQI', cur.aqi);
+        if (cur.uv != null) metricsHtml += metricBlock('UV', cur.uv);
+
+        if (metricsHtml) {
+            html += '<div class="wx-metrics">' + metricsHtml + '</div>';
+        }
+        html += '</div>';
+
+        // Hourly chart
+        if (data.hourly && data.hourly.length > 1) {
+            html += '<div class="wx-chart-wrap"><canvas id="plugin-weather-chart"></canvas></div>';
+        }
+
+        // Daily forecast row
+        if (data.daily && data.daily.length) {
+            html += '<div class="wx-forecast">';
+            var maxDays = Math.min(data.daily.length, 7);
+            for (var i = 0; i < maxDays; i++) {
+                var d = data.daily[i];
+                var dIcon = d.weather_code ? ('/images/weather/' + encodeURIComponent(d.weather_code) + '.png') : '';
+                var moonIcon = d.moon_phase ? ('/images/weather/' + encodeURIComponent(d.moon_phase) + '.png') : '';
+                html += '<div class="wx-day">' +
+                    '<div class="wx-day-name">' + escapeHtml(d.date || '') + '</div>' +
+                    (dIcon ? '<img class="wx-day-icon" src="' + dIcon + '" alt="" onerror="this.style.display=\'none\'" />' : '') +
+                    '<div class="wx-day-temps">' +
+                        '<span>' + escapeHtml(d.temp_max != null ? d.temp_max : '--') + '°</span>' +
+                        '<span class="wx-day-low"> / ' + escapeHtml(d.temp_min != null ? d.temp_min : '--') + '°</span>' +
+                    '</div>' +
+                    (moonIcon ? '<div class="wx-moon"><img src="' + moonIcon + '" alt="" onerror="this.style.display=\'none\'" />' +
+                        (d.moon_phase_pct ? '<span>' + escapeHtml(d.moon_phase_pct) + '%</span>' : '') + '</div>' : '') +
+                    '</div>';
+            }
+            html += '</div>';
+        }
+
+        // Alerts banner (if present)
+        if (data.alerts && data.alerts.length) {
+            var a = data.alerts[0];
+            var alertText = a.event || 'Weather Alert';
+            if (a.until_str) alertText += ' • Until ' + a.until_str;
+            html += '<div class="wx-alerts">⚠ ' + escapeHtml(alertText) + '</div>';
+        }
+
+        root.innerHTML = html;
+
+        // Draw the hourly chart now that the canvas exists
+        if (data.hourly && data.hourly.length > 1) {
+            drawChart(data.hourly, tempUnit);
+        }
+    }
+
+    function drawChart(hourly, tempUnit) {
+        var canvas = document.getElementById('plugin-weather-chart');
+        if (!canvas || !window.Chart) return;
+
+        var labels = hourly.map(function (h) { return h.time || ''; });
+        var temps = hourly.map(function (h) { return h.temp; });
+        var precip = hourly.map(function (h) {
+            var p = h.precip_prob;
+            if (p == null) return 0;
+            // OpenWeatherMap pop is 0..1; Open-Meteo is also normalized to 0..1
+            return p <= 1 ? Math.round(p * 100) : p;
+        });
+
+        if (chart) { chart.destroy(); chart = null; }
+
+        chart = new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        type: 'line',
+                        label: 'Temperature' + (tempUnit ? ' (' + tempUnit + ')' : ''),
+                        data: temps,
+                        borderColor: '#F17A24',
+                        backgroundColor: 'rgba(241, 122, 36, 0.15)',
+                        tension: 0.35,
+                        fill: true,
+                        pointRadius: 2,
+                        yAxisID: 'y',
+                    },
+                    {
+                        type: 'bar',
+                        label: 'Precip %',
+                        data: precip,
+                        backgroundColor: 'rgba(26, 111, 176, 0.55)',
+                        yAxisID: 'y1',
+                        barPercentage: 0.6,
+                        categoryPercentage: 0.7,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, labels: { color: '#e8e8e8', font: { size: 10 } } },
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                scales: {
+                    x: { ticks: { color: '#aaa', maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { position: 'left', ticks: { color: '#F17A24' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y1: { position: 'right', min: 0, max: 100, ticks: { color: '#1A6FB0' }, grid: { drawOnChartArea: false } }
+                }
+            }
+        });
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-weather-content');
+        root.innerHTML = '<div class="wx-error">' + msg + '</div>';
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        document.getElementById('plugin-weather-content').innerHTML = '';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        pendingData = d;
+        // Ensure Chart.js is loaded before attempting to draw the chart.
+        if (!chartJsLoaded) {
+            loadChartJs(function () { render(pendingData); });
+        } else {
+            render(pendingData);
+        }
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to load weather.';
+        renderError(msg);
+    });
+})();
+</script>

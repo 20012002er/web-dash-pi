@@ -1,0 +1,165 @@
+<!-- RSS plugin dashboard fragment. Title at top, scrollable list of items below. -->
+<style>
+.plugin-rss {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    box-sizing: border-box;
+    padding: 2.5vmin 3vmin;
+}
+.plugin-rss .rs-title {
+    font-size: clamp(1.3rem, 5vmin, 3.6rem);
+    font-weight: 600;
+    text-align: center;
+    margin: 0 0 2vmin;
+    line-height: 1.15;
+    flex-shrink: 0;
+    border-bottom: 1px solid currentColor;
+    padding-bottom: 1.5vmin;
+}
+.plugin-rss .rs-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+}
+.plugin-rss .rs-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 2vmin;
+    padding: 1.8vmin 0;
+    border-bottom: 1px solid currentColor;
+    text-decoration: none;
+    color: inherit;
+}
+.plugin-rss .rs-item:last-child {
+    border-bottom: none;
+}
+.plugin-rss .rs-item-title {
+    font-size: clamp(0.95rem, 3.4vmin, 2.3rem);
+    font-weight: 600;
+    line-height: 1.25;
+    margin: 0;
+    /* Truncate to a single line */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+.plugin-rss .rs-item-date {
+    font-size: clamp(0.75rem, 2.4vmin, 1.6rem);
+    opacity: 0.65;
+    flex-shrink: 0;
+    white-space: nowrap;
+    align-self: center;
+}
+.plugin-rss .rs-item-thumb {
+    width: clamp(3rem, 9vmin, 6rem);
+    height: clamp(3rem, 9vmin, 6rem);
+    object-fit: cover;
+    border-radius: 1vmin;
+    flex-shrink: 0;
+}
+.plugin-rss .rs-error {
+    color: #ff6b6b;
+    font-size: 2rem;
+    padding: 2rem;
+    text-align: center;
+}
+.plugin-rss .rs-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(1rem, 4vmin, 2.5rem);
+    opacity: 0.6;
+}
+</style>
+
+<div class="plugin-rss" id="plugin-rss-root">
+    <div id="plugin-rss-content"></div>
+</div>
+
+<script>
+(function () {
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+            return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+        });
+    }
+
+    function formatDate(s) {
+        if (!s) return '';
+        // Try to produce a short, readable date; fall back to the raw string.
+        try {
+            var d = new Date(s);
+            if (isNaN(d.getTime())) return s;
+            return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        } catch (e) {
+            return s;
+        }
+    }
+
+    function render(data) {
+        var root = document.getElementById('plugin-rss-content');
+        if (!data) return;
+        root.style.color = data.text_color || '#000';
+
+        var html = '';
+        if (data.title) {
+            html += '<div class="rs-title">' + escapeHtml(data.title) + '</div>';
+        }
+
+        var items = data.items || [];
+        if (items.length === 0) {
+            html += '<div class="rs-empty">No items in feed</div>';
+        } else {
+            html += '<div class="rs-list">';
+            for (var i = 0; i < items.length; i++) {
+                var it = items[i];
+                var thumb = '';
+                if (data.include_images && it.image_url) {
+                    thumb = '<img class="rs-item-thumb" src="' + escapeHtml(it.image_url) + '" alt="" ' +
+                        'onerror="this.style.display=\'none\'" />';
+                }
+                html +=
+                    '<a class="rs-item" href="' + escapeHtml(it.link || '#') + '" target="_blank" rel="noopener noreferrer">' +
+                        thumb +
+                        '<div class="rs-item-title">' + escapeHtml(it.title || '') + '</div>' +
+                        '<div class="rs-item-date">' + escapeHtml(formatDate(it.published)) + '</div>' +
+                    '</a>';
+            }
+            html += '</div>';
+        }
+
+        root.innerHTML = html;
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-rss-content');
+        root.innerHTML = '<div class="rs-error">' + msg + '</div>';
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        document.getElementById('plugin-rss-content').innerHTML = '';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        document.getElementById('plugin-rss-root').style.backgroundColor = d.background_color || '#fff';
+        render(d);
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to load RSS feed.';
+        renderError(msg);
+    });
+})();
+</script>

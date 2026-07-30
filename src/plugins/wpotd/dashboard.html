@@ -1,0 +1,116 @@
+<!-- Wikipedia POTD plugin dashboard fragment. Full-screen image with title overlay and description panel. -->
+<style>
+.plugin-wpotd {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    background: #000;
+    overflow: hidden;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.plugin-wpotd .wp-img {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+.plugin-wpotd .wp-panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.88) 45%);
+    color: #fff;
+    padding: 8vmin 4vmin 3vmin;
+}
+.plugin-wpotd .wp-title {
+    font-size: clamp(1.1rem, 4.4vmin, 3rem);
+    font-weight: 600;
+    line-height: 1.25;
+    margin: 0 0 1vmin;
+}
+.plugin-wpotd .wp-desc {
+    font-size: clamp(0.85rem, 2.8vmin, 1.8rem);
+    line-height: 1.4;
+    opacity: 0.9;
+    max-height: 30vh;
+    overflow-y: auto;
+    margin: 0 0 0.8vmin;
+}
+.plugin-wpotd .wp-date {
+    font-size: clamp(0.7rem, 2.4vmin, 1.5rem);
+    opacity: 0.6;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+.plugin-wpotd .wp-error {
+    color: #ff6b6b;
+    font-size: 2rem;
+    text-align: center;
+    padding: 2rem;
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    transform: translateY(-50%);
+}
+</style>
+
+<div class="plugin-wpotd" id="plugin-wpotd-root">
+    <img id="plugin-wpotd-img" class="wp-img" alt="" />
+    <div id="plugin-wpotd-panel" class="wp-panel" style="display:none;">
+        <div id="plugin-wpotd-title" class="wp-title"></div>
+        <div id="plugin-wpotd-desc" class="wp-desc"></div>
+        <div id="plugin-wpotd-date" class="wp-date"></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+        });
+    }
+
+    function formatDate(s) {
+        if (!s) return '';
+        try {
+            var d = new Date(s);
+            if (isNaN(d.getTime())) return s;
+            return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+        } catch (e) {
+            return s;
+        }
+    }
+
+    var img = document.getElementById('plugin-wpotd-img');
+    var panel = document.getElementById('plugin-wpotd-panel');
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        img.removeAttribute('src');
+        panel.style.display = 'none';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+
+        if (d.image_url) {
+            img.src = d.image_url;
+        }
+        var fitMode = d.fit_mode || 'fit';
+        img.style.objectFit = fitMode === 'fill' ? 'cover' : 'contain';
+
+        document.getElementById('plugin-wpotd-title').textContent = d.title || '';
+        document.getElementById('plugin-wpotd-desc').textContent = d.description || '';
+        document.getElementById('plugin-wpotd-date').textContent = formatDate(d.date);
+        panel.style.display = 'block';
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to load Wikipedia POTD.';
+        var root = document.getElementById('plugin-wpotd-root');
+        root.innerHTML = '<div class="wp-error">' + escapeHtml(msg) + '</div>';
+    });
+})();
+</script>

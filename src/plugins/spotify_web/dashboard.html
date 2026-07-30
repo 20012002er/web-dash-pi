@@ -1,0 +1,62 @@
+<!-- Spotify Web Player plugin dashboard fragment. Embeds the Spotify Web Player
+     in a full-screen iframe. Spotify may block iframe embedding via
+     X-Frame-Options; we detect that and fall back to an "Open Spotify" link. -->
+<div class="plugin-spotify" style="width:100%;height:100%;position:relative;background:#000;">
+  <iframe id="spotify-frame" style="width:100%;height:100%;border:0;" allow="autoplay; encrypted-media"></iframe>
+  <div id="spotify-fallback" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;align-items:center;justify-content:center;flex-direction:column;color:#fff;font-family:sans-serif;">
+    <p style="font-size:2rem;margin-bottom:1rem;">Spotify Web Player</p>
+    <a href="https://open.spotify.com" target="_blank" rel="noopener noreferrer" style="font-size:1.5rem;color:#1DB954;text-decoration:underline;">Open Spotify in new tab</a>
+  </div>
+  <script>
+    (function () {
+      var frame = document.getElementById('spotify-frame');
+      var fallback = document.getElementById('spotify-fallback');
+      var loaded = false;
+
+      // If the iframe doesn't fire 'load' within a few seconds, or the loaded
+      // document is unreachable (cross-origin), assume Spotify blocked embedding
+      // and reveal the fallback link.
+      var fallbackTimer = setTimeout(function () {
+        if (!loaded) {
+          frame.style.display = 'none';
+          fallback.style.display = 'flex';
+        }
+      }, 4000);
+
+      frame.addEventListener('load', function () {
+        loaded = true;
+        clearTimeout(fallbackTimer);
+        // We can't inspect the cross-origin document, so we trust the load event.
+        // If Spotify redirected to a login page that's still fine — it's loaded.
+      });
+
+      window.addEventListener('plugin-data', function (e) {
+        var data = (e.detail && e.detail.data) || {};
+        if (data.embed_url) {
+          // Reset fallback state before attempting a fresh embed.
+          loaded = false;
+          frame.style.display = '';
+          fallback.style.display = 'none';
+          clearTimeout(fallbackTimer);
+          var t = setTimeout(function () {
+            if (!loaded) {
+              frame.style.display = 'none';
+              fallback.style.display = 'flex';
+            }
+          }, 4000);
+          // Reassign so the load handler's clearTimeout targets the latest timer.
+          fallbackTimer = t;
+          frame.src = data.embed_url;
+        }
+      });
+
+      window.addEventListener('plugin-data-error', function (e) {
+        var error = (e.detail && e.detail.error) || 'Failed to load Spotify.';
+        frame.style.display = 'none';
+        fallback.style.display = 'flex';
+        var p = fallback.querySelector('p');
+        if (p) p.textContent = error;
+      });
+    })();
+  </script>
+</div>

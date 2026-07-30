@@ -1,0 +1,24 @@
+{
+    "name": "DashPi",
+    "timezone": "America/New_York",
+    "time_format": "12h",
+    "scheduler_sleep_time": 60,
+    "startup": true,
+    "loop_enabled": true,
+    "loop_config": {
+        "loops": [],
+        "rotation_interval_seconds": 300,
+        "active_loop": null
+    },
+    "refresh_info": {
+        "refresh_time": null,
+        "refresh_type": null,
+        "plugin_id": null
+    },
+    "plugin_order": [],
+    "proxy": {
+        "enabled": false,
+        "host": "",
+        "port": ""
+    }
+}

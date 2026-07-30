@@ -1,0 +1,437 @@
+<!-- Clock plugin dashboard fragment. Renders one of four clock faces. -->
+<style>
+.plugin-clock {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ---------- Digital face ---------- */
+.plugin-clock .face-digital {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.plugin-clock .digital-time {
+    font-family: 'DS-Digital', 'Courier New', monospace;
+    font-weight: bold;
+    line-height: 1;
+    text-align: center;
+    letter-spacing: 0.02em;
+    position: relative;
+}
+.plugin-clock .digital-date {
+    font-family: 'Jost', sans-serif;
+    position: absolute;
+    bottom: 8vh;
+    left: 0;
+    right: 0;
+    text-align: center;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+/* ---------- Gradient face ---------- */
+.plugin-clock .face-gradient {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+.plugin-clock .gradient-clock {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    overflow: hidden;
+}
+.plugin-clock .gradient-hand {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: bottom center;
+    border-radius: 999px;
+}
+
+/* ---------- Divided face ---------- */
+.plugin-clock .face-divided {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.plugin-clock .divided-clock {
+    position: relative;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.plugin-clock .divided-hand {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: bottom center;
+    border-radius: 999px;
+}
+.plugin-clock .divided-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    z-index: 5;
+}
+
+/* ---------- Word clock face ---------- */
+.plugin-clock .face-word {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4vmin;
+    box-sizing: border-box;
+}
+.plugin-clock .word-grid {
+    display: grid;
+    grid-template-columns: repeat(11, 1fr);
+    grid-template-rows: repeat(10, 1fr);
+    gap: 0.5vmin;
+    width: 100%;
+    max-width: 100vmin;
+    height: 90vh;
+    max-height: 90vmin;
+    font-family: 'Napoli', 'Jost', sans-serif;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.plugin-clock .word-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(1.2rem, 4.2vmin, 5rem);
+    line-height: 1;
+    opacity: 0.18;
+    transition: opacity 0.3s ease;
+    user-select: none;
+}
+.plugin-clock .word-cell.lit {
+    opacity: 1;
+}
+
+.plugin-clock .clock-error {
+    color: #ff6b6b;
+    font-size: 2rem;
+    text-align: center;
+    padding: 2rem;
+}
+</style>
+
+<div class="plugin-clock" id="plugin-clock-root">
+    <div id="plugin-clock-content"></div>
+</div>
+
+<script>
+(function () {
+    var WORD_GRID = [
+        ['I','T','L','I','S','A','S','A','M','P','M'],
+        ['A','C','Q','U','A','R','T','E','R','D','C'],
+        ['T','W','E','N','T','Y','F','I','V','E','X'],
+        ['H','A','L','F','S','T','E','N','F','T','O'],
+        ['P','A','S','T','E','R','U','N','I','N','E'],
+        ['O','N','E','S','I','X','T','H','R','E','E'],
+        ['F','O','U','R','F','I','V','E','T','W','O'],
+        ['E','I','G','H','T','E','L','E','V','E','N'],
+        ['S','E','V','E','N','T','W','E','L','V','E'],
+        ['T','E','N','S','E','O','C','L','O','C','K']
+    ];
+
+    function translateWordGridPositions(hour, minute) {
+        var letters = [[0,0],[0,1],[0,3],[0,4]]; // IT IS
+        var _minute = minute;
+        if (minute > 30) _minute = 60 - minute;
+        if (_minute >= 3) {
+            var minuteBlocks = [
+                [[2,6],[2,7],[2,8],[2,9]], // FIVE
+                [[3,5],[3,6],[3,7]], // TEN
+                [[1,0],[1,2],[1,3],[1,4],[1,5],[1,6],[1,7],[1,8]], // A QUARTER
+                [[2,0],[2,1],[2,2],[2,3],[2,4],[2,5],[2,5]], // TWENTY
+                [[2,0],[2,1],[2,2],[2,3],[2,4],[2,5],[2,5],[2,6],[2,7],[2,8],[2,9]], // TWENTYFIVE
+                [[3,0],[3,1],[3,2],[3,3]] // HALF
+            ];
+            var mapped = Math.round((0 + (5 - 0) * ((_minute - 3) / (28 - 3))) - 0.4);
+            letters = letters.concat(minuteBlocks[mapped]);
+        }
+        if (3 <= minute && minute < 33) {
+            letters = letters.concat([[4,0],[4,1],[4,2],[4,3]]); // PAST
+        } else if (33 <= minute && minute <= 57) {
+            letters = letters.concat([[3,9],[3,10]]); // TO
+        }
+        var hours = [
+            [[5,0],[5,1],[5,2]], // ONE
+            [[6,8],[6,9],[6,10]], // TWO
+            [[5,6],[5,7],[5,8],[5,9],[5,10]], // THREE
+            [[6,0],[6,1],[6,2],[6,3]], // FOUR
+            [[6,4],[6,5],[6,6],[6,7]], // FIVE
+            [[5,3],[5,4],[5,5]], // SIX
+            [[8,0],[8,1],[8,2],[8,3],[8,4]], // SEVEN
+            [[7,0],[7,1],[7,2],[7,3],[7,4]], // EIGHT
+            [[4,7],[4,8],[4,9],[4,10]], // NINE
+            [[9,0],[9,1],[9,2]], // TEN
+            [[7,5],[7,6],[7,7],[7,8],[7,9],[7,10]], // ELEVEN
+            [[8,5],[8,6],[8,7],[8,8],[8,9],[8,10]] // TWELVE
+        ];
+        if (minute >= 33) {
+            letters = letters.concat(hours[hour % 12]);
+        } else {
+            letters = letters.concat(hours[hour - 1]);
+        }
+        if ((0 <= minute && minute < 3) || (57 < minute && minute <= 60)) {
+            letters = letters.concat([[9,5],[9,6],[9,7],[9,8],[9,9],[9,10]]); // OCLOCK
+        }
+        return letters;
+    }
+
+    function polarToCartesian(cx, cy, r, angleDeg) {
+        // 0deg at 12 o'clock, clockwise positive
+        var rad = (angleDeg - 90) * Math.PI / 180;
+        return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+    }
+
+    function describeHand(cx, cy, length, angleDeg, width) {
+        var base = polarToCartesian(cx, cy, 0, angleDeg);
+        var tip = polarToCartesian(cx, cy, length, angleDeg);
+        var perpRad = (angleDeg) * Math.PI / 180; // perpendicular to hand
+        var dx = Math.sin(perpRad) * width / 2;
+        var dy = -Math.cos(perpRad) * width / 2;
+        var p1 = { x: base.x + dx, y: base.y + dy };
+        var p2 = { x: base.x - dx, y: base.y - dy };
+        var p3 = { x: tip.x - dx, y: tip.y - dy };
+        var p4 = { x: tip.x + dx, y: tip.y + dy };
+        return 'M ' + p1.x + ' ' + p1.y + ' L ' + p4.x + ' ' + p4.y +
+               ' L ' + p3.x + ' ' + p3.y + ' L ' + p2.x + ' ' + p2.y + ' Z';
+    }
+
+    function handAngle(hour, minute, second, isHour) {
+        if (isHour) {
+            return ((hour % 12) * 30 + minute * 0.5 + (second || 0) * (0.5 / 60)) % 360;
+        }
+        return (minute * 6 + (second || 0) * 0.1) % 360;
+    }
+
+    function renderDigital(data) {
+        var size = Math.min(window.innerWidth, window.innerHeight) * 0.34;
+        var root = document.getElementById('plugin-clock-content');
+        var datePart = data.date ? '<div class="digital-date" style="color:' + data.primary_color + '">' + data.date + '</div>' : '';
+        root.innerHTML =
+            '<div class="face-digital" style="background-color:' + data.secondary_color + '">' +
+                '<div class="digital-time" style="font-size:' + size + 'px;color:' + data.primary_color + '">' +
+                    '<span style="opacity:0.12">00:00</span><br>' +
+                    '<span style="position:absolute;top:0;left:0;width:100%;">' + data.time + '</span>' +
+                '</div>' +
+                datePart +
+            '</div>';
+    }
+
+    function renderGradient(data) {
+        var root = document.getElementById('plugin-clock-content');
+        var w = window.innerWidth, h = window.innerHeight;
+        var dim = Math.min(w, h);
+        var hourAngle = handAngle(data.hour_24, data.minute, data.second, true);
+        var minuteAngle = handAngle(data.hour_24, data.minute, data.second, false);
+
+        // Conic gradient from hour hand to minute hand (and back), mapped so the
+        // gradient sweeps between the two hands like the original.
+        var gradStart = (hourAngle - 90 + 360) % 360;
+        var gradEnd = (minuteAngle - 90 + 360) % 360;
+
+        var minuteLength = dim * 0.35;
+        var hourLength = dim * 0.22;
+        var handWidth = Math.max(dim * 0.013, 2);
+        var cx = 50, cy = 50;
+
+        function handSvg(angle, length, color, width) {
+            var base = polarToCartesian(cx, cy, 0, angle);
+            var tip = polarToCartesian(cx, cy, length, angle);
+            return '<line x1="' + base.x + '" y1="' + base.y + '" x2="' + tip.x + '" y2="' + tip.y +
+                   '" stroke="' + color + '" stroke-width="' + width + '" stroke-linecap="round" />';
+        }
+
+        // Build a conic gradient using SVG for fidelity with the original.
+        var gradDef =
+            '<defs>' +
+              '<radialGradient id="grad-fade" cx="50%" cy="50%" r="50%">' +
+                '<stop offset="0%" stop-color="' + data.primary_color + '" stop-opacity="0.35"/>' +
+                '<stop offset="100%" stop-color="' + data.secondary_color + '" stop-opacity="0"/>' +
+              '</radialGradient>' +
+            '</defs>';
+
+        var hands =
+            handSvg(hourAngle, hourLength, data.primary_color, handWidth) +
+            handSvg(minuteAngle, minuteLength, data.primary_color, handWidth) +
+            '<circle cx="' + cx + '" cy="' + cy + '" r="' + (handWidth * 0.9) + '" fill="' + data.primary_color + '" />';
+
+        root.innerHTML =
+            '<div class="face-gradient" style="background-color:' + data.secondary_color + '">' +
+              '<div class="gradient-clock" style="width:' + dim + 'px;height:' + dim + 'px;' +
+                   'background: conic-gradient(from ' + gradStart + 'deg, ' + data.primary_color + ' 0deg, ' +
+                   data.primary_color + ' ' + ((gradEnd - gradStart + 360) % 360) + 'deg, ' +
+                   data.secondary_color + ' ' + ((gradEnd - gradStart + 360) % 360) + 'deg, ' +
+                   data.secondary_color + ' 360deg);">' +
+                '<div style="position:absolute;inset:0;border-radius:50%;' +
+                     'background: conic-gradient(from ' + gradStart + 'deg, ' + data.primary_color + ' 0deg, ' +
+                     data.primary_color + ' ' + ((gradEnd - gradStart + 360) % 360) + 'deg, ' +
+                     data.secondary_color + ' ' + ((gradEnd - gradStart + 360) % 360) + 'deg, ' +
+                     data.secondary_color + ' 360deg);opacity:0.55;"></div>' +
+                '<div style="position:absolute;inset:8%;border-radius:50%;background:' + data.secondary_color + ';opacity:0.0;"></div>' +
+                '<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0;width:100%;height:100%;">' +
+                  gradDef + hands +
+                '</svg>' +
+              '</div>' +
+            '</div>';
+    }
+
+    function renderDivided(data) {
+        var root = document.getElementById('plugin-clock-content');
+        var w = window.innerWidth, h = window.innerHeight;
+        var dim = Math.min(w, h);
+        var faceSize = dim * 0.45;
+        var hourAngle = handAngle(data.hour_24, data.minute, data.second, true);
+        var minuteAngle = handAngle(data.hour_24, data.minute, data.second, false);
+        var handWidth = Math.max(dim * 0.009, 2);
+
+        var cx = 50, cy = 50;
+        var hourTip = polarToCartesian(cx, cy, 30, hourAngle);
+        var minTip = polarToCartesian(cx, cy, 45, minuteAngle);
+        var hourBase = polarToCartesian(cx, cy, 0, hourAngle);
+        var minBase = polarToCartesian(cx, cy, 0, minuteAngle);
+
+        // Hour marks every 30 degrees
+        var marks = '';
+        for (var a = 0; a < 360; a += 30) {
+            var s = polarToCartesian(cx, cy, 44, a);
+            var e = polarToCartesian(cx, cy, 41, a);
+            marks += '<line x1="' + s.x + '" y1="' + s.y + '" x2="' + e.x + '" y2="' + e.y +
+                     '" stroke="' + data.secondary_color + '" stroke-width="0.6" />';
+        }
+
+        root.innerHTML =
+            '<div class="face-divided" style="background-color:' + data.primary_color + '">' +
+              '<div class="divided-clock" style="width:' + faceSize + 'px;height:' + faceSize + 'px;' +
+                   'background:' + data.primary_color + ';border:' + Math.max(dim * 0.031, 4) + 'px solid ' + data.secondary_color + ';' +
+                   'box-shadow:0 ' + Math.max(dim * 0.0075, 4) + 'px 0 rgba(0,0,0,0.2);">' +
+                '<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;">' +
+                  marks +
+                  '<line x1="' + minBase.x + '" y1="' + minBase.y + '" x2="' + minTip.x + '" y2="' + minTip.y +
+                    '" stroke="' + data.secondary_color + '" stroke-width="' + (handWidth / dim * 100) + '" stroke-linecap="round" />' +
+                  '<line x1="' + hourBase.x + '" y1="' + hourBase.y + '" x2="' + hourTip.x + '" y2="' + hourTip.y +
+                    '" stroke="' + data.secondary_color + '" stroke-width="' + (handWidth / dim * 100) + '" stroke-linecap="round" />' +
+                '</svg>' +
+                '<div class="divided-center" style="width:' + Math.max(dim * 0.028, 8) + 'px;height:' + Math.max(dim * 0.028, 8) + 'px;' +
+                     'background:' + data.primary_color + ';border:' + Math.max(dim * 0.007, 2) + 'px solid ' + data.secondary_color + ';"></div>' +
+              '</div>' +
+            '</div>';
+    }
+
+    function renderWord(data) {
+        var root = document.getElementById('plugin-clock-content');
+        var positions = translateWordGridPositions(data.hour_24 % 12, data.minute);
+        var litSet = {};
+        for (var i = 0; i < positions.length; i++) {
+            litSet[positions[i][0] + '-' + positions[i][1]] = true;
+        }
+        var html = '<div class="face-word" style="background-color:' + data.primary_color + '"><div class="word-grid" style="color:' + data.secondary_color + '">';
+        for (var y = 0; y < WORD_GRID.length; y++) {
+            for (var x = 0; x < WORD_GRID[y].length; x++) {
+                var lit = litSet[y + '-' + x] ? ' lit' : '';
+                html += '<div class="word-cell' + lit + '">' + WORD_GRID[y][x] + '</div>';
+            }
+        }
+        html += '</div></div>';
+        root.innerHTML = html;
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-clock-content');
+        root.innerHTML = '<div class="clock-error">' + msg + '</div>';
+    }
+
+    function render(data) {
+        if (!data) return;
+        if (data.face === 'digital') renderDigital(data);
+        else if (data.face === 'gradient') renderGradient(data);
+        else if (data.face === 'divided') renderDivided(data);
+        else if (data.face === 'word') renderWord(data);
+        else renderDigital(data);
+    }
+
+    // Clock updates every second via window.refreshPluginData re-fetch is too
+    // heavy; instead we locally tick the displayed time once per second.
+    var tickTimer = null;
+    var lastData = null;
+
+    function startTick() {
+        stopTick();
+        tickTimer = setInterval(function () {
+            if (!lastData) return;
+            // Increment local seconds to keep the clock visually alive between
+            // server refreshes. Recompute display strings from the incremented time.
+            lastData.second = (lastData.second + 1) % 60;
+            if (lastData.second === 0) {
+                lastData.minute = (lastData.minute + 1) % 60;
+                if (lastData.minute === 0) {
+                    lastData.hour_24 = (lastData.hour_24 + 1) % 24;
+                    lastData.hour = (lastData.hour_24 % 12) || 12;
+                }
+            }
+            if (lastData.time_format === '24h') {
+                lastData.time = (lastData.hour_24 < 10 ? '0' : '') + lastData.hour_24 + ':' +
+                                (lastData.minute < 10 ? '0' : '') + lastData.minute;
+            } else {
+                lastData.time = lastData.hour + ':' + (lastData.minute < 10 ? '0' : '') + lastData.minute;
+            }
+            render(lastData);
+        }, 1000);
+    }
+
+    function stopTick() {
+        if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function (e) {
+        // Initialize empty state; data arrives via plugin-data.
+        var root = document.getElementById('plugin-clock-content');
+        root.innerHTML = '';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        lastData = JSON.parse(JSON.stringify(d));
+        render(lastData);
+        startTick();
+        // Re-render on resize so dimensions stay correct.
+        if (!window._pluginClockResize) {
+            window._pluginClockResize = true;
+            window.addEventListener('resize', function () { if (lastData) render(lastData); });
+        }
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        stopTick();
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to load clock.';
+        renderError(msg);
+    });
+})();
+</script>

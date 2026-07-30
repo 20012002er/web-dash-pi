@@ -1,0 +1,106 @@
+<!-- AI Text plugin dashboard fragment. Centered title with underline, body text in quotes. -->
+<style>
+.plugin-ai-text {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    box-sizing: border-box;
+    padding: 5vmin 6vmin;
+    text-align: center;
+}
+.plugin-ai-text .at-title {
+    font-size: clamp(1.4rem, 6vmin, 4rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin: 0;
+    line-height: 1.15;
+    max-width: 90%;
+}
+.plugin-ai-text .at-underline {
+    display: block;
+    height: 0.4vmin;
+    background: currentColor;
+    margin: 2vmin auto 4vmin;
+    width: clamp(6rem, 30vmin, 22rem);
+    border-radius: 0.2vmin;
+}
+.plugin-ai-text .at-body {
+    font-size: clamp(1.1rem, 4.5vmin, 3rem);
+    line-height: 1.5;
+    margin: 0;
+    max-width: 100%;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+.plugin-ai-text .at-body::before { content: '\201C'; }
+.plugin-ai-text .at-body::after  { content: '\201D'; }
+.plugin-ai-text .at-error {
+    color: #ff6b6b;
+    font-size: 2rem;
+    text-align: center;
+    padding: 2rem;
+}
+</style>
+
+<div class="plugin-ai-text" id="plugin-ai-text-root">
+    <div id="plugin-ai-text-content"></div>
+</div>
+
+<script>
+(function () {
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    function render(data) {
+        var root = document.getElementById('plugin-ai-text-content');
+        if (!data) return;
+
+        // Apply configured colors
+        var container = document.getElementById('plugin-ai-text-root');
+        container.style.backgroundColor = data.background_color || '#ffffff';
+        container.style.color = data.text_color || '#000000';
+
+        var html = '';
+        if (data.title) {
+            html += '<div class="at-title">' + escapeHtml(data.title) + '</div>';
+            html += '<span class="at-underline"></span>';
+        }
+        if (data.text) {
+            html += '<div class="at-body">' + escapeHtml(data.text) + '</div>';
+        }
+        root.innerHTML = html;
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-ai-text-content');
+        var container = document.getElementById('plugin-ai-text-root');
+        container.style.backgroundColor = '#ffffff';
+        container.style.color = '#ff6b6b';
+        root.innerHTML = '<div class="at-error">' + msg + '</div>';
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        document.getElementById('plugin-ai-text-content').innerHTML = '';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        render(d);
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to generate text.';
+        renderError(msg);
+    });
+})();
+</script>

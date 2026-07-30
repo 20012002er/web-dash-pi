@@ -1,0 +1,27 @@
+<div class="plugin-image" style="width:100%;height:100%;background:#000;position:relative;">
+  <img id="plugin-image-img" style="width:100%;height:100%;object-fit:contain;" alt="" />
+  <script>
+    (function () {
+      var img = document.getElementById('plugin-image-img');
+
+      window.addEventListener('plugin-data', function (e) {
+        var data = (e.detail && e.detail.data) || {};
+        if (data.image_url) {
+          // Cache-bust so refreshes pick up the newly copied file.
+          img.src = data.image_url + '?t=' + Date.now();
+        }
+        // fit: letterbox (contain), fill: crop (cover), blur: show full image
+        var fitMode = data.fit_mode || 'fill';
+        img.style.objectFit = fitMode === 'fill' ? 'cover' : 'contain';
+      });
+
+      window.addEventListener('plugin-data-error', function (e) {
+        var error = (e.detail && e.detail.error) || 'Unknown error';
+        var container = document.querySelector('.plugin-image');
+        if (container) {
+          container.innerHTML = '<div style="color:red;padding:20px;">' + error + '</div>';
+        }
+      });
+    })();
+  </script>
+</div>

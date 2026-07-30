@@ -1,0 +1,91 @@
+<!-- AI Image plugin dashboard fragment. Full-screen generated image with title overlay. -->
+<style>
+.plugin-ai-image {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    background: #000;
+    overflow: hidden;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #fff;
+}
+.plugin-ai-image .ai-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+.plugin-ai-image .ai-title-bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.7) 60%, rgba(0, 0, 0, 0) 100%);
+    padding: 4vmin 3vmin 2.5vmin;
+}
+.plugin-ai-image .ai-title {
+    font-size: clamp(1rem, 3.8vmin, 2.4rem);
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.25;
+    text-align: center;
+}
+.plugin-ai-image .ai-error {
+    color: #ff6b6b;
+    font-size: 2rem;
+    text-align: center;
+    padding: 2rem;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+</style>
+
+<div class="plugin-ai-image" id="plugin-ai-image-root">
+    <div id="plugin-ai-image-content"></div>
+</div>
+
+<script>
+(function () {
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+
+    function render(data) {
+        var root = document.getElementById('plugin-ai-image-content');
+        if (!data) return;
+
+        var html = '<img class="ai-img" src="' + escapeHtml(data.image_url) + '" alt="" ' +
+            'onerror="this.style.display=\'none\';document.getElementById(\'plugin-ai-image-content\').insertAdjacentHTML(\'beforeend\',\'<div class=ai-error>Failed to load image.</div>\')" />';
+
+        if (data.title) {
+            html += '<div class="ai-title-bar"><div class="ai-title">' + escapeHtml(data.title) + '</div></div>';
+        }
+
+        root.innerHTML = html;
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-ai-image-content');
+        root.innerHTML = '<div class="ai-error">' + msg + '</div>';
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        document.getElementById('plugin-ai-image-content').innerHTML = '';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        render(d);
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to generate AI image.';
+        renderError(msg);
+    });
+})();
+</script>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ project_name }} - v{{ version }} - Settings</title>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('dashpi-v2-theme') ||
+                         (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='styles/main.css') }}">
+    <script src="{{ url_for('static', filename='scripts/dark_mode.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/response_modal.js') }}"></script>
+    <script>
+        async function handleAction() {
+            const form = document.querySelector('.settings-form');
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch("{{ url_for('settings.update_settings') }}", {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    showResponseModal('success', result.message || 'Settings saved.');
+                } else {
+                    showResponseModal('failure', `Error!  ${result.error}`);
+                    form.reset();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showResponseModal('failure', 'An error occurred while processing your request.');
+            }
+        }
+
+        function toggleProxyConfig() {
+            const enabled = document.getElementById('proxyEnabled').checked;
+            document.getElementById('proxyConfig').style.display = enabled ? '' : 'none';
+        }
+    </script>
+</head>
+<body>
+    <div class="frame">
+        <header class="header">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <button onclick="window.location.href='{{ url_for('main.main_page') }}'" class="back-button">← Back to Main</button>
+                <div class="title-block">
+                    <span class="project-label">{{ project_name }} - v{{ version }}</span>
+                    <h1>Settings</h1>
+                </div>
+            </div>
+        </header>
+        <div class="separator"></div>
+        <!-- Settings Content -->
+        <form class="settings-form">
+            <div id="settings-container">
+                <div class="form-group">
+                    <label for="deviceName" class="form-label">Device Name:</label>
+                    <input type="text" id="deviceName" name="deviceName"
+                        value="{{ device_settings.device_name or '' }}"
+                        placeholder="{{ device_settings.device_name or 'DashPi' }}"
+                        class="form-input" style="max-width: 250px;">
+                    <span class="form-hint" style="font-size: 0.8em; opacity: 0.7;">
+                        Access this device at <strong>http://{{ device_settings.device_name or 'hostname' }}.local</strong>
+                    </span>
+                </div>
+                <div class="form-group">
+                    <!-- Timezone Dropdown -->
+                    <div class="form-group nowrap">
+                        <label for="timezone" class="form-label">Time Zone:</label>
+                        <input
+                            type="text"
+                            id="timezone"
+                            name="timezoneName"
+                            class="form-input"
+                            list="timezoneList"
+                            placeholder="Type to search..."
+                            value="{{ device_settings.timezone }}"
+                        />
+                        <datalist id="timezoneList">
+                            {% for timezone in timezones %}
+                            <option value="{{ timezone }}"></option>
+                            {% endfor %}
+                        </datalist>
+                    </div>
+
+                    <!-- Time Format Dropdown -->
+                    <div class="form-group nowrap">
+                        <label for="timeFormat" class="form-label">Time Format:</label>
+                        <select id="timeFormat" name="timeFormat" class="form-input">
+                            <option value="12h" {% if device_settings.time_format == "12h" %}selected{% endif %}>12 Hour (AM/PM)</option>
+                            <option value="24h" {% if device_settings.time_format == "24h" %}selected{% endif %}>24 Hour</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Proxy Section -->
+            <div class="separator" style="margin: 16px 0;"></div>
+            <div class="form-group" style="padding: 0 16px;">
+                <label class="form-label" style="font-size: 1.1em; font-weight: bold;">Proxy</label>
+                <div class="form-group nowrap" style="margin-top: 4px;">
+                    <label class="form-label" for="proxyEnabled">Enable Proxy</label>
+                    <input type="checkbox" id="proxyEnabled" name="proxyEnabled"
+                           {% if device_settings.get('proxy', {}).get('enabled') %}checked{% endif %}
+                           onchange="toggleProxyConfig()">
+                </div>
+                <div id="proxyConfig" style="margin-top: 8px;{% if not device_settings.get('proxy', {}).get('enabled') %} display: none;{% endif %}">
+                    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <div class="form-group nowrap">
+                            <label for="proxyHost" class="form-label">Host:</label>
+                            <input type="text" id="proxyHost" name="proxyHost"
+                                   value="{{ device_settings.get('proxy', {}).get('host', '') }}"
+                                   placeholder="127.0.0.1" class="form-input" style="max-width: 200px;">
+                        </div>
+                        <div class="form-group nowrap">
+                            <label for="proxyPort" class="form-label">Port:</label>
+                            <input type="text" id="proxyPort" name="proxyPort"
+                                   value="{{ device_settings.get('proxy', {}).get('port', '') }}"
+                                   placeholder="7890" class="form-input" style="max-width: 80px;">
+                        </div>
+                    </div>
+                    <span class="form-hint" style="font-size: 0.8em; opacity: 0.7; margin-top: 4px; display: block;">
+                        When enabled, all HTTP requests (plugins, API calls) route through this proxy. Requires service restart to take effect.
+                    </span>
+                </div>
+            </div>
+        </form>
+
+        <!-- Buttons -->
+        <div class="buttons-container">
+            <button type="button" onclick="handleAction()" class="action-button">Save</button>
+        </div>
+    </div>
+    <!-- Success/Error Modal -->
+    {% include 'response_modal.html' %}
+</body>
+</html>

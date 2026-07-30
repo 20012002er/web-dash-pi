@@ -1,0 +1,96 @@
+"""Base plugin module — defines the abstract base class for all DashPi plugins.
+
+Ported from the original OpenClaw-DashPi project. Instead of
+`generate_image` (which produced a PIL image), subclasses now implement
+`get_data`, returning structured data for the frontend dashboard.html view
+to render. The image_loader has been removed accordingly.
+"""
+
+import logging
+import os
+from utils.app_utils import resolve_path
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+PLUGINS_DIR = resolve_path("plugins")
+
+FRAME_STYLES = [
+    {
+        "name": "None",
+        "icon": "frames/blank.png"
+    },
+    {
+        "name": "Corner",
+        "icon": "frames/corner.png"
+    },
+    {
+        "name": "Top and Bottom",
+        "icon": "frames/top_and_bottom.png"
+    },
+    {
+        "name": "Rectangle",
+        "icon": "frames/rectangle.png"
+    }
+]
+
+class BasePlugin:
+    """Base class for all plugins."""
+    def __init__(self, config, **dependencies):
+        self.config = config
+
+    def get_data(self, settings, device_config):
+        """Return structured data for the frontend to render.
+
+        Subclasses must override this to provide data via their
+        ``dashboard.html`` fragment. Default implementation raises
+        NotImplementedError so missing overrides are caught immediately.
+        """
+        raise NotImplementedError("get_data must be implemented by subclasses")
+
+    @staticmethod
+    def get_loop_weight(settings):
+        """Return a weight multiplier for random loop selection.
+
+        Plugins can override this to dynamically adjust how often they appear
+        in random rotation. For example, a stock plugin might return a lower
+        weight when the market is closed so other plugins get more display time.
+
+        Args:
+            settings: The plugin's settings dict from the loop configuration.
+
+        Returns:
+            float: Weight multiplier (default 1.0). Lower values mean less frequent
+                   selection; 0.0 would effectively skip the plugin.
+        """
+        return 1.0
+
+    def cleanup(self, settings):
+        """Optional cleanup method that plugins can override to delete associated resources.
+
+        Called when a plugin instance is deleted. Plugins should override this to clean up
+        any files, external resources, or other data associated with the plugin instance.
+
+        Args:
+            settings: The plugin instance's settings dict, which may contain file paths or other resources
+        """
+        pass  # Default implementation does nothing
+
+    def get_plugin_id(self):
+        return self.config.get("id")
+
+    def get_plugin_dir(self, path=None):
+        plugin_dir = os.path.join(PLUGINS_DIR, self.get_plugin_id())
+        if path:
+            plugin_dir = os.path.join(plugin_dir, path)
+        return plugin_dir
+
+    def generate_settings_template(self):
+        template_params = {"settings_template": "base_plugin/settings.html"}
+
+        settings_path = self.get_plugin_dir("settings.html")
+        if Path(settings_path).is_file():
+            template_params["settings_template"] = f"{self.get_plugin_id()}/settings.html"
+
+        template_params['frame_styles'] = FRAME_STYLES
+        return template_params

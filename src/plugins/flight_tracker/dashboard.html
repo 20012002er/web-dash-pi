@@ -1,0 +1,520 @@
+<!-- Flight Tracker plugin dashboard fragment. Leaflet.js map with rotated aircraft markers, trails, and detail cards. -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<style>
+.plugin-flight {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    background: #0f1420;
+    overflow: hidden;
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.plugin-flight #flight-map {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: #0a1020;
+}
+/* Top-left status panel */
+.plugin-flight .flight-status {
+    position: absolute;
+    left: 1.5vmin;
+    top: 1.5vmin;
+    z-index: 10;
+    background: rgba(10, 16, 32, 0.82);
+    color: #fff;
+    border-radius: 1vmin;
+    padding: 1.2vmin 1.8vmin;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    max-width: 50vw;
+}
+.plugin-flight .flight-status-title {
+    font-size: clamp(0.9rem, 3vmin, 1.8rem);
+    font-weight: 600;
+    margin: 0 0 0.3vmin;
+    color: #64c8ff;
+    line-height: 1.2;
+}
+.plugin-flight .flight-status-sub {
+    font-size: clamp(0.72rem, 2.4vmin, 1.3rem);
+    opacity: 0.75;
+    margin: 0;
+    line-height: 1.3;
+}
+/* Top-right legend */
+.plugin-flight .flight-legend {
+    position: absolute;
+    right: 1.5vmin;
+    top: 1.5vmin;
+    z-index: 10;
+    background: rgba(10, 16, 32, 0.82);
+    color: #fff;
+    border-radius: 1vmin;
+    padding: 1vmin 1.4vmin;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    font-size: clamp(0.68rem, 2.2vmin, 1.15rem);
+}
+.plugin-flight .flight-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6vmin;
+    margin: 0.3vmin 0;
+}
+.plugin-flight .flight-legend-dot {
+    width: 1vmin;
+    height: 1vmin;
+    min-width: 8px;
+    min-height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+/* Bottom aircraft list */
+.plugin-flight .flight-list {
+    position: absolute;
+    left: 1.5vmin;
+    right: 1.5vmin;
+    bottom: 1.5vmin;
+    z-index: 10;
+    background: rgba(10, 16, 32, 0.82);
+    color: #fff;
+    border-radius: 1vmin;
+    padding: 1.2vmin 1.6vmin;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+    max-height: 38vh;
+    overflow-y: auto;
+}
+.plugin-flight .flight-list::-webkit-scrollbar { width: 6px; }
+.plugin-flight .flight-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+.plugin-flight .flight-list-empty {
+    font-size: clamp(0.78rem, 2.6vmin, 1.4rem);
+    opacity: 0.7;
+    text-align: center;
+    padding: 1vmin;
+}
+.plugin-flight .flight-card {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1vmin 1.4vmin;
+    padding: 0.8vmin 0.4vmin;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.plugin-flight .flight-card:last-child { border-bottom: none; }
+.plugin-flight .flight-card-marker {
+    width: 1.4vmin;
+    height: 1.4vmin;
+    min-width: 12px;
+    min-height: 12px;
+    border-radius: 50%;
+    box-shadow: 0 0 6px currentColor;
+}
+.plugin-flight .flight-card-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.plugin-flight .flight-card-id {
+    font-size: clamp(0.82rem, 2.8vmin, 1.5rem);
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.plugin-flight .flight-card-id .reg {
+    font-weight: 400;
+    opacity: 0.7;
+    margin-left: 0.6em;
+    font-size: 0.9em;
+}
+.plugin-flight .flight-card-sub {
+    font-size: clamp(0.7rem, 2.3vmin, 1.2rem);
+    opacity: 0.75;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.plugin-flight .flight-card-stats {
+    text-align: right;
+    font-size: clamp(0.75rem, 2.5vmin, 1.3rem);
+    line-height: 1.25;
+}
+.plugin-flight .flight-card-alt {
+    font-weight: 600;
+}
+.plugin-flight .flight-card-sp {
+    opacity: 0.75;
+    font-size: 0.92em;
+}
+.plugin-flight .flight-card.emergency .flight-card-id {
+    color: #ff5252;
+}
+.plugin-flight .flight-emergency-tag {
+    display: inline-block;
+    background: #ff3232;
+    color: #fff;
+    font-size: 0.72em;
+    font-weight: 700;
+    padding: 0.1em 0.5em;
+    border-radius: 0.3em;
+    margin-left: 0.5em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+/* Map marker styling */
+.plugin-flight .ac-icon {
+    background: transparent;
+    border: none;
+}
+.plugin-flight .ac-icon-inner {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.plugin-flight .ac-icon-svg {
+    width: 22px;
+    height: 22px;
+    filter: drop-shadow(0 0 3px rgba(0,0,0,0.6));
+}
+.plugin-flight .ac-icon-label {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 1px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 2px #000, 0 0 3px #000;
+    white-space: nowrap;
+    pointer-events: none;
+}
+.plugin-flight .observer-icon-inner {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #4a9eff;
+    border: 2px solid #fff;
+    box-shadow: 0 0 6px rgba(74,158,255,0.9);
+}
+.plugin-flight .flight-error {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ff6b6b;
+    font-size: clamp(1rem, 3vmin, 2rem);
+    text-align: center;
+    padding: 2rem;
+    background: rgba(0,0,0,0.7);
+}
+</style>
+
+<div class="plugin-flight" id="plugin-flight-root">
+    <div id="flight-map"></div>
+    <div class="flight-status" id="flight-status">
+        <div class="flight-status-title" id="flight-status-title">Loading…</div>
+        <div class="flight-status-sub" id="flight-status-sub"></div>
+    </div>
+    <div class="flight-legend" id="flight-legend">
+        <div class="flight-legend-row"><span class="flight-legend-dot" style="background:#ff3232"></span>Emergency</div>
+        <div class="flight-legend-row"><span class="flight-legend-dot" style="background:#64dc64"></span>Climbing</div>
+        <div class="flight-legend-row"><span class="flight-legend-dot" style="background:#ff8250"></span>Descending</div>
+        <div class="flight-legend-row"><span class="flight-legend-dot" style="background:#50c8ff"></span>Level</div>
+    </div>
+    <div class="flight-list" id="flight-list">
+        <div class="flight-list-empty">Waiting for aircraft data…</div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script>
+(function () {
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+        });
+    }
+
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+    // ---- Unit formatting (matches Python _format_altitude / _format_speed) ----
+    function formatAltitude(alt, units) {
+        if (alt == null) return '—';
+        if (alt === 'ground') return 'GND';
+        var ft = Number(alt);
+        if (isNaN(ft)) return String(alt);
+        if (units === 'metric') {
+            var m = Math.round(ft * 0.3048);
+            if (m >= 10000) return (m / 1000).toFixed(1) + 'km';
+            return m.toLocaleString() + 'm';
+        }
+        return ft.toLocaleString() + 'ft';
+    }
+
+    function formatSpeed(speed, units) {
+        if (speed == null) return '—';
+        var kts = Number(speed);
+        if (isNaN(kts)) return String(speed);
+        if (units === 'metric') return (kts * 1.852).toFixed(0) + 'km/h';
+        if (units === 'imperial') return (kts * 1.15078).toFixed(0) + 'mph';
+        return kts.toFixed(0) + 'kts';
+    }
+
+    function formatHeading(h) {
+        if (h == null) return '—';
+        var n = Number(h);
+        if (isNaN(n)) return String(h);
+        return Math.round(n) + '°';
+    }
+
+    function formatDistance(nm, units) {
+        if (nm == null) return '';
+        var n = Number(nm);
+        if (isNaN(n)) return '';
+        if (units === 'metric') return (n * 1.852).toFixed(1) + 'km';
+        if (units === 'imperial') return (n * 1.15078).toFixed(1) + 'mi';
+        return n.toFixed(1) + 'nm';
+    }
+
+    function formatVertRate(vr, units) {
+        if (vr == null) return '';
+        var fpm = Number(vr);
+        if (isNaN(fpm) || Math.abs(fpm) < 50) return '';
+        var arrow = fpm > 0 ? '▲' : '▼';
+        if (units === 'metric') {
+            var ms = fpm * 0.00508;
+            return arrow + Math.abs(ms).toFixed(1) + 'm/s';
+        }
+        return arrow + Math.abs(fpm).toLocaleString() + 'fpm';
+    }
+
+    function categoryLabel(cat) {
+        return ({
+            helicopter: 'Helo',
+            airliner: 'Airliner',
+            business_jet: 'Bizjet',
+            ga: 'GA',
+        })[cat] || cat || '';
+    }
+
+    // Marker color: emergency (red) > climbing (green) > descending (orange) > level (cyan)
+    function aircraftColor(ac) {
+        if (ac.emergency) return '#ff3232';
+        var vr = ac.vert_rate;
+        if (vr != null) {
+            if (vr > 300) return '#64dc64';
+            if (vr < -300) return '#ff8250';
+        }
+        return '#50c8ff';
+    }
+
+    // SVG arrow oriented so 0° = north (up). Rotated by CSS transform.
+    function aircraftSvg(color) {
+        return '<svg class="ac-icon-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">' +
+            '<path d="M12 1 L15 14 L12 11 L9 14 Z" fill="' + color + '" stroke="#000" stroke-width="0.8" stroke-linejoin="round"/>' +
+            '</svg>';
+    }
+
+    function aircraftLabel(ac) {
+        if (ac.flight) return ac.flight;
+        if (ac.registration) return ac.registration;
+        if (ac.hex) return ac.hex.toUpperCase();
+        return '';
+    }
+
+    var map = null;
+    var observerMarker = null;
+    var aircraftMarkers = {};  // hex -> L.marker
+    var trailLines = {};       // hex -> L.polyline
+
+    function ensureMap() {
+        if (map) return map;
+        map = L.map('flight-map', {
+            worldCopyJump: true,
+            zoomControl: false,
+            attributionControl: false,
+        }).setView([20, 0], 3);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 12,
+            subdomains: 'abc',
+        }).addTo(map);
+        return map;
+    }
+
+    function clearAircraftLayers() {
+        Object.keys(aircraftMarkers).forEach(function (k) {
+            map.removeLayer(aircraftMarkers[k]);
+        });
+        Object.keys(trailLines).forEach(function (k) {
+            map.removeLayer(trailLines[k]);
+        });
+        aircraftMarkers = {};
+        trailLines = {};
+    }
+
+    function render(data) {
+        if (!data) return;
+        var m = ensureMap();
+        var units = data.units || 'aviation';
+        var showTracks = data.show_tracks !== false;
+        var aircraft = data.aircraft || [];
+        var bounds = data.map_bounds || null;
+
+        // Fit map to bounds (only on first load or when bounds change significantly)
+        if (bounds && bounds.north != null) {
+            try {
+                var b = L.latLngBounds([bounds.south, bounds.west], [bounds.north, bounds.east]);
+                m.fitBounds(b, { animate: false });
+            } catch (e) { /* ignore */ }
+        }
+
+        // Observer marker
+        var obs = data.observer || data.center || {};
+        if (obs.lat != null && obs.lng != null) {
+            if (!observerMarker) {
+                observerMarker = L.marker([obs.lat, obs.lng], {
+                    icon: L.divIcon({
+                        className: 'ac-icon',
+                        html: '<div class="observer-icon-inner"></div>',
+                        iconSize: [14, 14],
+                        iconAnchor: [7, 7],
+                    }),
+                    zIndexOffset: 500,
+                }).addTo(m);
+            } else {
+                observerMarker.setLatLng([obs.lat, obs.lng]);
+            }
+        }
+
+        // Reset markers each render (aircraft set can change completely)
+        clearAircraftLayers();
+
+        aircraft.forEach(function (ac) {
+            if (ac.lat == null || ac.lng == null) return;
+            var color = aircraftColor(ac);
+            var heading = ac.heading != null ? Number(ac.heading) : 0;
+            if (isNaN(heading)) heading = 0;
+            var label = escapeHtml(aircraftLabel(ac));
+            var iconHtml = '<div class="ac-icon-inner" style="transform: rotate(' + heading + 'deg)">' +
+                aircraftSvg(color) + '</div>' +
+                (label ? '<div class="ac-icon-label">' + label + '</div>' : '');
+            var marker = L.marker([ac.lat, ac.lng], {
+                icon: L.divIcon({
+                    className: 'ac-icon',
+                    html: iconHtml,
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11],
+                }),
+                zIndexOffset: ac.emergency ? 1000 : 0,
+            }).addTo(m);
+            aircraftMarkers[ac.hex || ac.registration || label || Math.random()] = marker;
+
+            // Trail polyline
+            if (showTracks && ac.trail && ac.trail.length >= 2) {
+                var latlngs = ac.trail.map(function (p) { return [p.lat, p.lon]; });
+                var line = L.polyline(latlngs, {
+                    color: color,
+                    weight: 1.2,
+                    opacity: 0.6,
+                    dashArray: '3 4',
+                }).addTo(m);
+                trailLines[ac.hex || ac.registration || label || Math.random()] = line;
+            }
+        });
+
+        // Status panel
+        var count = data.aircraft_count != null ? data.aircraft_count : aircraft.length;
+        var radius = data.radius_nm != null ? data.radius_nm : '';
+        document.getElementById('flight-status-title').textContent =
+            count + (count === 1 ? ' aircraft' : ' aircraft') + ' within ' + radius + 'nm';
+        var subParts = [];
+        if (obs.lat != null && obs.lng != null) {
+            subParts.push('Obs: ' + Math.abs(obs.lat).toFixed(2) + '°' + (obs.lat >= 0 ? 'N' : 'S') +
+                ', ' + Math.abs(obs.lng).toFixed(2) + '°' + (obs.lng >= 0 ? 'E' : 'W'));
+        }
+        var emergCount = aircraft.filter(function (a) { return a.emergency; }).length;
+        if (emergCount > 0) subParts.push('⚠ ' + emergCount + ' emergency');
+        document.getElementById('flight-status-sub').textContent = subParts.join('  |  ');
+
+        // Aircraft list / detail cards
+        renderList(aircraft, units);
+    }
+
+    function renderList(aircraft, units) {
+        var listEl = document.getElementById('flight-list');
+        if (!aircraft.length) {
+            listEl.innerHTML = '<div class="flight-list-empty">No aircraft in range.</div>';
+            return;
+        }
+        var html = '';
+        aircraft.forEach(function (ac) {
+            var color = aircraftColor(ac);
+            var label = escapeHtml(aircraftLabel(ac) || '—');
+            var regPart = ac.registration ? '<span class="reg">' + escapeHtml(ac.registration) + '</span>' : '';
+            var emergTag = ac.emergency ? '<span class="flight-emergency-tag">' + escapeHtml(ac.emergency) + '</span>' : '';
+            var subParts = [];
+            if (ac.aircraft_type) subParts.push(escapeHtml(ac.aircraft_type));
+            subParts.push(categoryLabel(ac.category));
+            if (ac.on_ground) subParts.push('On ground');
+            if (ac.squawk) subParts.push('SQ ' + escapeHtml(ac.squawk));
+            var subLine = subParts.join(' · ');
+
+            var statsLine2Parts = [];
+            var vr = formatVertRate(ac.vert_rate, units);
+            if (vr) statsLine2Parts.push(vr);
+            if (ac.distance_nm != null) statsLine2Parts.push(formatDistance(ac.distance_nm, units));
+            statsLine2Parts.push('HDG ' + formatHeading(ac.heading));
+
+            html += '<div class="flight-card' + (ac.emergency ? ' emergency' : '') + '">' +
+                '<div class="flight-card-marker" style="color:' + color + ';background:' + color + '"></div>' +
+                '<div class="flight-card-main">' +
+                  '<div class="flight-card-id">' + label + regPart + emergTag + '</div>' +
+                  '<div class="flight-card-sub">' + subLine + '</div>' +
+                '</div>' +
+                '<div class="flight-card-stats">' +
+                  '<div class="flight-card-alt">' + formatAltitude(ac.altitude, units) + '</div>' +
+                  '<div class="flight-card-sp">' + formatSpeed(ac.speed, units) + '</div>' +
+                  '<div class="flight-card-sp">' + statsLine2Parts.join(' · ') + '</div>' +
+                '</div>' +
+              '</div>';
+        });
+        listEl.innerHTML = html;
+    }
+
+    function renderError(msg) {
+        var root = document.getElementById('plugin-flight-root');
+        var err = document.createElement('div');
+        err.className = 'flight-error';
+        err.textContent = msg;
+        root.appendChild(err);
+    }
+
+    window.addEventListener('plugin-dashboard-loaded', function () {
+        ensureMap();
+        document.getElementById('flight-status-title').textContent = 'Loading…';
+    });
+
+    window.addEventListener('plugin-data', function (e) {
+        var d = e.detail && e.detail.data;
+        if (!d) return;
+        render(d);
+    });
+
+    window.addEventListener('plugin-data-error', function (e) {
+        var msg = (e.detail && e.detail.error) ? e.detail.error : 'Failed to load flight tracker.';
+        renderError(msg);
+    });
+})();
+</script>

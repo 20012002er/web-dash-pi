@@ -1,0 +1,25 @@
+<div class="plugin-image" style="width:100%;height:100%;background:#000;position:relative;">
+  <img id="plugin-image-img" style="width:100%;height:100%;object-fit:contain;" alt="" />
+  <script>
+    (function () {
+      var img = document.getElementById('plugin-image-img');
+
+      window.addEventListener('plugin-data', function (e) {
+        var data = (e.detail && e.detail.data) || {};
+        if (data.url) {
+          img.src = data.url;
+        }
+        // fit: letterbox (contain), fill: crop (cover)
+        img.style.objectFit = data.fit_mode === 'fill' ? 'cover' : 'contain';
+      });
+
+      window.addEventListener('plugin-data-error', function (e) {
+        var error = (e.detail && e.detail.error) || 'Unknown error';
+        var container = document.querySelector('.plugin-image');
+        if (container) {
+          container.innerHTML = '<div style="color:red;padding:20px;">' + error + '</div>';
+        }
+      });
+    })();
+  </script>
+</div>

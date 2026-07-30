@@ -1,0 +1,37 @@
+<div class="form-group">
+    <label for="fitMode" class="form-label">Display Mode</label>
+    <select id="fitMode" name="fitMode" class="form-input">
+        <option value="fit">Fit (Letterbox - Full image visible)</option>
+        <option value="fill">Fill (Crop - No black bars)</option>
+        <option value="blur">Blur Background (Full image with blurred fill)</option>
+    </select>
+    <small style="flex-basis: 100%; margin-top: 2px; color: var(--text-secondary, #888);">
+        Fit: Shows entire image with black bars if needed<br>
+        Fill: Crops edges to fill screen completely<br>
+        Blur: Shows entire image with blurred background fill
+    </small>
+</div>
+
+<div class="form-group">
+    <label for="folder_path" class="form-label">Folder path:</label>
+    <input type="text" id="folder_path" name="folder_path" placeholder="Type something..." required class="form-input">
+</div>
+
+<script>
+    // populate form values from plugin settings
+    document.addEventListener('DOMContentLoaded', () => {
+        if (loadPluginSettings) {
+            document.getElementById('folder_path').value = pluginSettings.folder_path;
+
+            // Migrate old padImage setting to new fitMode
+            const fitMode = document.getElementById('fitMode');
+            if (pluginSettings.fitMode) {
+                fitMode.value = pluginSettings.fitMode;
+            } else if (pluginSettings.padImage === 'true') {
+                fitMode.value = pluginSettings.backgroundOption === 'blur' ? 'blur' : 'fit';
+            } else {
+                fitMode.value = 'fill';
+            }
+        }
+    });
+</script>
