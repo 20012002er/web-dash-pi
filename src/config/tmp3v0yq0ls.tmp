@@ -126,41 +126,11 @@
                 "next_plugin_index": 7
             }
         ],
-        "rotation_interval_seconds": 300,
+        "rotation_interval_seconds": 60,
         "active_loop": null
     },
     "refresh_info": {
-        "refresh_time": "2026-07-31T22:46:17.535860",
-        "refresh_type": "Data Fetch",
-        "plugin_id": "clock"
-    },
-    "plugin_order": [],
-    "proxy": {
-        "enabled": true,
-        "host": "127.0.0.1",
-        "port": "7890"
-    },
-    "plugin_last_settings_image_album": {
-        "albumProvider": "Immich",
-        "url": "https://immich.toby-blog.com",
-        "album": "happy",
-        "fitMode": "blur",
-        "randomize": "false"
-    },
-    "plugin_last_settings_image_upload": {
-        "_previous_files": [
-            "/Users/lazybeartoby/develop/work_test/web-dash-pi/src/static/images/saved/image_album_current.jpg"
-        ],
-        "imageFiles[]": [
-            "/Users/lazybeartoby/develop/work_test/web-dash-pi/src/static/images/saved/image_album_current.jpg"
-        ],
-        "image_index": 0
-    },
-    "loop_override": null,
-    "plugin_last_settings_clock": {
-        "selectedClockFace": "Digital Clock",
-        "autoRefresh": "1",
-        "primaryColor": "#ffffff",
-        "secondaryColor": "#000000"
-    }
-}
+        "refresh_time": "2026-07-31T22:39:14.179778",
+        "refresh_type": "Manual Update",
+        "plugin_id": "image_album",
+        "loop": 
