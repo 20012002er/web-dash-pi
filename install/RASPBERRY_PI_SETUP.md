@@ -123,10 +123,10 @@ EOF
 
 首次启动后，通过浏览器访问管理界面添加和配置插件：
 
-1. 访问 `http://<树莓派IP>:80/`
+1. 访问 `http://<树莓派IP>:8080/`
 2. 进入 **Settings** 配置各插件参数
 3. 进入 **Loops** 页面将插件添加到轮换列表
-4. 访问 `http://<树莓派IP>:80/display` 查看全屏展示效果
+4. 访问 `http://<树莓派IP>:8080/display` 查看全屏展示效果
 
 ---
 
@@ -134,15 +134,15 @@ EOF
 
 ### 3.1 生产模式（推荐）
 
-使用 Waitress 生产级 WSGI 服务器，监听端口 80：
+使用 Waitress 生产级 WSGI 服务器，监听端口 8080：
 
 ```bash
 cd ~/DashPi
 source venv/bin/activate
-sudo python src/dashpi.py
+python src/dashpi.py
 ```
 
-> 端口 80 需要 root 权限，因此使用 `sudo`。如果不想使用 root，可修改 `src/dashpi.py` 中的 `PORT = 8080`。
+> 端口 8080 不需要 root 权限，可直接运行。
 
 ### 3.2 开发模式
 
@@ -244,7 +244,7 @@ chromium-browser \
     --overscroll-history-navigation=0 \
     --disable-pinch \
     --disable-features=TranslateUI \
-    http://localhost/display
+    http://localhost:8080/display
 SCRIPT
 
 chmod +x ~/dashpi-kiosk.sh
@@ -371,13 +371,13 @@ DashPi/
 
 ## 8. 常见问题
 
-### Q: 端口 80 被占用？
+### Q: 端口 8080 被占用？
 
-检查是否有其他服务占用 80 端口：
+检查是否有其他服务占用 8080 端口：
 ```bash
-sudo lsof -i :80
+sudo lsof -i :8080
 ```
-常见原因：Apache/Nginx 正在运行。停止它们或改用 8080 端口。
+常见原因：Apache/Nginx 正在运行。停止它们或改用其他端口。
 
 ### Q: 插件无法加载外部图片？
 
@@ -400,11 +400,11 @@ sudo lsof -i :80
 ### Q: 如何远程管理？
 
 DashPi 提供完整的 Web 管理界面：
-- 主页：`http://<IP>/`
-- 设置：`http://<IP>/settings`
-- Loop 管理：`http://<IP>/loops`
-- API Keys：`http://<IP>/apikeys`
-- 全屏展示：`http://<IP>/display`
+- 主页：`http://<IP>:8080/`
+- 设置：`http://<IP>:8080/settings`
+- Loop 管理：`http://<IP>:8080/loops`
+- API Keys：`http://<IP>:8080/apikeys`
+- 全屏展示：`http://<IP>:8080/display`
 
 ---
 

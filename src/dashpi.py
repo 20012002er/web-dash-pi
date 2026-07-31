@@ -44,8 +44,8 @@ if args.dev:
     logger.info("Starting in DEVELOPMENT mode on port 8080")
 else:
     DEV_MODE = False
-    PORT = 80
-    logger.info("Starting in PRODUCTION mode on port 80")
+    PORT = 8080
+    logger.info("Starting in PRODUCTION mode on port 8080")
 logging.getLogger('waitress.queue').setLevel(logging.ERROR)
 
 app = Flask(
