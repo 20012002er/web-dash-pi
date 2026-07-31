@@ -270,14 +270,14 @@
                    '" stroke="' + color + '" stroke-width="' + width + '" stroke-linecap="round" />';
         }
 
-        // Build a conic gradient using SVG for fidelity with the original.
-        var gradDef =
-            '<defs>' +
-              '<radialGradient id="grad-fade" cx="50%" cy="50%" r="50%">' +
-                '<stop offset="0%" stop-color="' + data.primary_color + '" stop-opacity="0.35"/>' +
-                '<stop offset="100%" stop-color="' + data.secondary_color + '" stop-opacity="0"/>' +
-              '</radialGradient>' +
-            '</defs>';
+        // Replicate the original's full-circle conic sweep: secondary at the
+        // hour hand, primary at the minute hand, then back to secondary.
+        var sweep = ((gradEnd - gradStart + 360) % 360);
+        var gradientBg =
+            'conic-gradient(from ' + gradStart + 'deg, ' +
+            data.secondary_color + ' 0deg, ' +
+            data.primary_color + ' ' + sweep + 'deg, ' +
+            data.secondary_color + ' 360deg)';
 
         var hands =
             handSvg(hourAngle, hourLength, data.primary_color, handWidth) +
@@ -287,18 +287,9 @@
         root.innerHTML =
             '<div class="face-gradient" style="background-color:' + data.secondary_color + '">' +
               '<div class="gradient-clock" style="width:' + dim + 'px;height:' + dim + 'px;' +
-                   'background: conic-gradient(from ' + gradStart + 'deg, ' + data.primary_color + ' 0deg, ' +
-                   data.primary_color + ' ' + ((gradEnd - gradStart + 360) % 360) + 'deg, ' +
-                   data.secondary_color + ' ' + ((gradEnd - gradStart + 360) % 360) + 'deg, ' +
-                   data.secondary_color + ' 360deg);">' +
-                '<div style="position:absolute;inset:0;border-radius:50%;' +
-                     'background: conic-gradient(from ' + gradStart + 'deg, ' + data.primary_color + ' 0deg, ' +
-                     data.primary_color + ' ' + ((gradEnd - gradStart + 360) % 360) + 'deg, ' +
-                     data.secondary_color + ' ' + ((gradEnd - gradStart + 360) % 360) + 'deg, ' +
-                     data.secondary_color + ' 360deg);opacity:0.55;"></div>' +
-                '<div style="position:absolute;inset:8%;border-radius:50%;background:' + data.secondary_color + ';opacity:0.0;"></div>' +
+                   'background:' + gradientBg + ';">' +
                 '<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0;width:100%;height:100%;">' +
-                  gradDef + hands +
+                  hands +
                 '</svg>' +
               '</div>' +
             '</div>';
@@ -330,7 +321,7 @@
         }
 
         root.innerHTML =
-            '<div class="face-divided" style="background-color:' + data.primary_color + '">' +
+            '<div class="face-divided" style="background:linear-gradient(to bottom,' + data.primary_color + ' 50%,' + data.secondary_color + ' 50%);">' +
               '<div class="divided-clock" style="width:' + faceSize + 'px;height:' + faceSize + 'px;' +
                    'background:' + data.primary_color + ';border:' + Math.max(dim * 0.031, 4) + 'px solid ' + data.secondary_color + ';' +
                    'box-shadow:0 ' + Math.max(dim * 0.0075, 4) + 'px 0 rgba(0,0,0,0.2);">' +

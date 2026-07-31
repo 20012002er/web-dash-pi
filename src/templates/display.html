@@ -5,6 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DashPi Display</title>
     <style>
+        /* Load the same font families used by the original DashPi display so
+           plugin dashboard fragments render with the correct typefaces. */
+        @font-face {
+            font-family: 'Jost';
+            src: url('{{ url_for('static', filename='fonts/Jost.ttf') }}') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Jost';
+            src: url('{{ url_for('static', filename='fonts/Jost-SemiBold.ttf') }}') format('truetype');
+            font-weight: 600;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'DS-Digital';
+            src: url('{{ url_for('static', filename='fonts/DS-DIGI/DS-DIGI.TTF') }}') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Napoli';
+            src: url('{{ url_for('static', filename='fonts/Napoli.ttf') }}') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Dogica';
+            src: url('{{ url_for('static', filename='fonts/dogicapixel.ttf') }}') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        @font-face {
+            font-family: 'Dogica';
+            src: url('{{ url_for('static', filename='fonts/dogicapixelbold.ttf') }}') format('truetype');
+            font-weight: bold;
+            font-style: normal;
+        }
+
         html, body {
             margin: 0;
             padding: 0;

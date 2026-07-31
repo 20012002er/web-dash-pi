@@ -1,0 +1,52 @@
+{
+    "name": "DashPi-Dev",
+    "timezone": "America/New_York",
+    "time_format": "12h",
+    "scheduler_sleep_time": 1,
+    "startup": {
+        "welcome_message": "Welcome to DashPi"
+    },
+    "loop_enabled": true,
+    "loop_config": {
+        "loops": [
+            {
+                "name": "Default",
+                "start_time": "00:00",
+                "end_time": "24:00",
+                "plugin_order": [
+                    {
+                        "plugin_id": "image_album",
+                        "refresh_interval_seconds": 1800,
+                        "plugin_settings": {
+                            "albumProvider": "Immich",
+                            "url": "http://192.168.28.130:2283",
+                            "album": "happy",
+                            "fitMode": "fit"
+                        },
+                        "latest_refresh_time": null
+                    },
+                    {
+                        "plugin_id": "clock",
+                        "refresh_interval_seconds": 1800,
+                        "plugin_settings": {
+                            "selectedClockFace": "Gradient Clock",
+                            "autoRefresh": "1",
+                            "primaryColor": "#db3246",
+                            "secondaryColor": "#000000"
+                        },
+                        "latest_refresh_time": null
+                    }
+                ],
+                "current_plugin_index": 0,
+                "randomize": false,
+                "next_plugin_index": 1
+            }
+        ],
+        "rotation_interval_seconds": 300,
+        "active_loop": null
+    },
+    "refresh_info": {
+        "refresh_time": "2026-07-31T10:15:35.080161",
+        "refresh_type": "Manual Update",
+        "plugin_id": "image_album",
+        "loop": 

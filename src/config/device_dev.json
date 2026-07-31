@@ -24,20 +24,31 @@
                             "fitMode": "fit"
                         },
                         "latest_refresh_time": null
+                    },
+                    {
+                        "plugin_id": "clock",
+                        "refresh_interval_seconds": 1800,
+                        "plugin_settings": {
+                            "selectedClockFace": "Digital Clock",
+                            "autoRefresh": "1",
+                            "primaryColor": "#ffffff",
+                            "secondaryColor": "#000000"
+                        },
+                        "latest_refresh_time": null
                     }
                 ],
                 "current_plugin_index": 0,
                 "randomize": false,
-                "next_plugin_index": 0
+                "next_plugin_index": 1
             }
         ],
         "rotation_interval_seconds": 300,
         "active_loop": null
     },
     "refresh_info": {
-        "refresh_time": "2026-07-30T22:01:08.054436",
+        "refresh_time": "2026-07-31T11:52:53.681542",
         "refresh_type": "Data Fetch",
-        "plugin_id": "image_album"
+        "plugin_id": "clock"
     },
     "plugin_order": [],
     "proxy": {
@@ -48,5 +59,21 @@
         "url": "http://192.168.28.130:2283",
         "album": "happy",
         "fitMode": "fit"
+    },
+    "plugin_last_settings_image_upload": {
+        "_previous_files": [
+            "/Users/lazybeartoby/develop/work_test/web-dash-pi/src/static/images/saved/image_album_current.jpg"
+        ],
+        "imageFiles[]": [
+            "/Users/lazybeartoby/develop/work_test/web-dash-pi/src/static/images/saved/image_album_current.jpg"
+        ],
+        "image_index": 0
+    },
+    "loop_override": null,
+    "plugin_last_settings_clock": {
+        "selectedClockFace": "Digital Clock",
+        "autoRefresh": "1",
+        "primaryColor": "#ffffff",
+        "secondaryColor": "#000000"
     }
 }

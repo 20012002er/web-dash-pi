@@ -47,6 +47,9 @@ def get_http_session() -> requests.Session:
         # 502 errors. ``trust_env=False`` makes requests ignore HTTP_PROXY /
         # HTTPS_PROXY env vars AND the macOS System Configuration proxies.
         _HTTP_SESSION.trust_env = False
+        # Explicitly disable proxies to bypass macOS system proxy settings
+        # which requests may still pick up even with trust_env=False.
+        _HTTP_SESSION.proxies = {}
 
         # Set common headers for all DashPi requests
         _HTTP_SESSION.headers.update({
