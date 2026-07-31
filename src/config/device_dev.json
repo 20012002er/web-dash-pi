@@ -15,6 +15,49 @@
                 "end_time": "24:00",
                 "plugin_order": [
                     {
+                        "plugin_id": "weather",
+                        "refresh_interval_seconds": 1800,
+                        "plugin_settings": {
+                            "latitude": "40.7128",
+                            "longitude": "-74.0060",
+                            "units": "metric",
+                            "weatherProvider": "OpenMeteo",
+                            "locationName": "New York, NY"
+                        },
+                        "latest_refresh_time": null
+                    },
+                    {
+                        "plugin_id": "art_museum",
+                        "refresh_interval_seconds": 1800,
+                        "plugin_settings": {
+                            "museum": "both",
+                            "showTitle": "true",
+                            "fitMode": "fit",
+                            "artPaintings": "true",
+                            "artPhotos": "true",
+                            "artOthers": "true"
+                        },
+                        "latest_refresh_time": null
+                    },
+                    {
+                        "plugin_id": "newspaper",
+                        "refresh_interval_seconds": 1800,
+                        "plugin_settings": {
+                            "newspaperSlug": "ny_nyt",
+                            "newspaperName": "The New York Times"
+                        },
+                        "latest_refresh_time": null
+                    },
+                    {
+                        "plugin_id": "wpotd",
+                        "refresh_interval_seconds": 1800,
+                        "plugin_settings": {
+                            "randomizeWpotd": "false",
+                            "fitMode": "fit"
+                        },
+                        "latest_refresh_time": null
+                    },
+                    {
                         "plugin_id": "unsplash",
                         "refresh_interval_seconds": 1800,
                         "plugin_settings": {
@@ -64,9 +107,9 @@
         "active_loop": null
     },
     "refresh_info": {
-        "refresh_time": "2026-07-31T17:16:07.518235",
+        "refresh_time": "2026-07-31T17:53:25.598276",
         "refresh_type": "Data Fetch",
-        "plugin_id": "apod"
+        "plugin_id": "art_museum"
     },
     "plugin_order": [],
     "proxy": {
@@ -92,7 +135,7 @@
     },
     "loop_override": {
         "type": "plugin",
-        "plugin_id": "apod"
+        "plugin_id": "art_museum"
     },
     "plugin_last_settings_clock": {
         "selectedClockFace": "Digital Clock",

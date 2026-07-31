@@ -1,8 +1,9 @@
 """Plugin blueprint — plugin settings pages, image upload/delete, and update endpoints."""
 
-from flask import Blueprint, request, jsonify, current_app, render_template, send_from_directory
+from flask import Blueprint, request, jsonify, current_app, render_template, send_from_directory, Response
 from plugins.plugin_registry import get_plugin_instance
 from utils.app_utils import resolve_path, handle_request_files, parse_form, sanitize_filename
+from utils.http_client import get_http_session
 from refresh_task import ManualRefresh
 import os
 import logging
@@ -161,6 +162,45 @@ def image(plugin_id, filename):
 
     # Serve the file from the plugin directory
     return send_from_directory(abs_plugin_dir, filename)
+
+
+@plugin_bp.route('/api/proxy_image')
+def proxy_image():
+    """Proxy an external image URL through the server to bypass CORS/CORP restrictions.
+
+    Query param: ``url`` — the full external image URL to fetch.
+    The image is retrieved via the shared HTTP session (respects proxy config)
+    and returned with ``Access-Control-Allow-Origin: *`` so the browser can
+    render it in ``<img>`` tags regardless of the original host's policy.
+    """
+    image_url = request.args.get('url', '')
+    if not image_url:
+        return jsonify({"error": "Missing 'url' parameter"}), 400
+
+    # Only allow http/https URLs
+    if not image_url.startswith(('http://', 'https://')):
+        return jsonify({"error": "Invalid URL scheme"}), 400
+
+    try:
+        session = get_http_session()
+        resp = session.get(image_url, timeout=30, stream=True)
+        if resp.status_code != 200:
+            return jsonify({"error": f"Upstream returned {resp.status_code}"}), resp.status_code
+
+        content_type = resp.headers.get('Content-Type', 'image/jpeg')
+        # Stream the image body back to the client
+        response = Response(
+            resp.iter_content(chunk_size=8192),
+            mimetype=content_type,
+            headers={
+                'Access-Control-Allow-Origin': '*',
+                'Cache-Control': 'public, max-age=3600',
+            }
+        )
+        return response
+    except Exception as e:
+        logger.error(f"Image proxy failed for {image_url}: {e}")
+        return jsonify({"error": "Failed to fetch image"}), 502
 
 
 @plugin_bp.route('/upload_image', methods=['POST'])

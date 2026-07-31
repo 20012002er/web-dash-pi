@@ -83,7 +83,8 @@
         if (!d) return;
 
         if (d.image_url) {
-            img.src = d.image_url;
+            // Proxy external images through the server to bypass CORS/CORP restrictions
+            img.src = '/api/proxy_image?url=' + encodeURIComponent(d.image_url);
         }
         // fit: letterbox (contain), fill: crop (cover)
         var fitMode = d.fit_mode || 'fit';
