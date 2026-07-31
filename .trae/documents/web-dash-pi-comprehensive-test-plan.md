@@ -46,6 +46,21 @@
 > ### 6. 改动文件清单（第二轮）
 > - `src/config/device_dev.json`：Immich URL 替换为 `https://immich.toby-blog.com`。
 >
+> ### 7. Unsplash & APOD 插件功能测试与代理支持（2026-07-31 第三轮）
+> - **代理支持实现**：
+>   - `src/utils/http_client.py`：新增 `_read_proxy_config()` 函数，从 `device.json` 读取代理配置。代理启用时，session 通过 `http://127.0.0.1:7890`（Clash）路由外部请求，同时设置 `NO_PROXY` 保持本地/LAN 流量直连。代理禁用时保持原有行为（完全绕过系统代理）。
+>   - `src/config/device_dev.json`：启用代理 `"enabled": true, "host": "127.0.0.1", "port": "7890"`。
+> - **Unsplash 测试**：
+>   - 后端 API：`GET /api/plugin/unsplash/data` 返回 200，成功获取图片 URL、摄影师名称、描述。
+>   - 前端渲染：图片正确加载，`fit_mode=fit` 以 letterbox 模式显示，底部显示摄影师信息叠加层（"Balanced rock formation in a desert landscape — by Roberto Shumski"），无 JS 控制台报错。
+> - **APOD 测试**：
+>   - 后端 API：`GET /api/plugin/apod/data` 返回 200，成功获取 NASA 每日天文图片 URL、标题、日期、说明。
+>   - 前端渲染：图片正确加载，标题 "Detailed View of a Solar Eclipse Corona"、日期 "2024-04-02" 正确显示，"Show explanation" 按钮可展开/收起说明文字，无 JS 控制台报错。
+>
+> ### 8. 改动文件清单（第三轮）
+> - `src/utils/http_client.py`：新增代理配置读取与应用逻辑。
+> - `src/config/device_dev.json`：启用代理；添加 unsplash/apod 到循环配置。
+>
 > ## 已知未解决问题（下次任务可继续）
 >
 > 1. **外部网络不可达插件（非项目 bug）**
@@ -255,6 +270,6 @@
 - [x] `pytest -v` 全部通过。
 - [ ] 管理页所有链接可访问、所有插件卡片可渲染（已确认首页/循环/API 密钥页可访问，未逐项点击所有管理页）。
 - [x] `/display` 在配置 loop 后每 1 秒轮询并正确切换插件。
-- [ ] 26 个插件中，无 API key 依赖的插件 100% 验证通过；有 key 依赖的插件在配置 key 后验证通过（Clock 已修复并验证；image_album 已通过公网 Immich 验证通过；wpotd 因外部网络不可达超时；其余插件多因缺少配置返回 500）。
-- [ ] 前端页面渲染在信息字段和交互行为上与 OpenClaw-DashPi 无功能性差异（Clock 已对齐；image_album 基本功能已验证，blur 模式未实现；其余插件尚未逐项对比）。
+- [ ] 26 个插件中，无 API key 依赖的插件 100% 验证通过；有 key 依赖的插件在配置 key 后验证通过（Clock 已修复并验证；image_album 已通过公网 Immich 验证通过；unsplash/apod 已通过代理验证通过；wpotd 因外部网络不可达超时；其余插件多因缺少配置返回 500）。
+- [ ] 前端页面渲染在信息字段和交互行为上与 OpenClaw-DashPi 无功能性差异（Clock 已对齐；image_album 基本功能已验证，blur 模式已实现；unsplash/apod 已验证通过；其余插件尚未逐项对比）。
 - [x] `.env`、`device.json` 未被提交或意外暴露。
