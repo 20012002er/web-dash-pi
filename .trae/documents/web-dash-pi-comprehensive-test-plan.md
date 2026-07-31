@@ -101,6 +101,22 @@
 > - `src/blueprints/plugin.py`：新增 `/api/proxy_image` 图片代理路由。
 > - `src/plugins/art_museum/dashboard.html`：图片加载改为通过 `/api/proxy_image` 代理。
 >
+> ### 13. AI Text / AI Image 插件功能测试与前端渲染验证（2026-07-31 第六轮）
+> - **配置变更**：
+>   - `src/config/device_dev.json`：在循环中添加 ai_text（DeepSeek 提供商，提示词 "Tell me an interesting science fact"，深色背景 #1a1a2e / 浅色文字 #e0e0e0）和 ai_image（SiliconFlow 提供商，提示词 "a beautiful sunset over mountains"，Kwai-Kolors/Kolors 模型）。
+> - **依赖修复**：
+>   - 安装 `socksio` 包：OpenAI SDK（httpx）通过 SOCKS 代理需要此依赖，否则 DeepSeek 调用报错 `Using SOCKS proxy, but the 'socksio' package is not installed`。
+> - **后端 API 测试**：
+>   - `GET /api/plugin/ai_text/data` → 200，DeepSeek 返回科学趣闻（香蕉放射性 / 土臭素等），包含 title、text、background_color、text_color。
+>   - `GET /api/plugin/ai_image/data` → 200，SiliconFlow 返回 AI 生成图片 URL（S3 临时链接）及 title。
+> - **前端渲染验证**：
+>   - **AI Text**：深色背景 (#1a1a2e) 配浅色文字 (#e0e0e0)，标题大写显示带下划线，正文以弯引号包裹，排版居中，无 JS 控制台报错。渲染完美。
+>   - **AI Image**：AI 生成的日落山脉图片全屏显示（object-fit: contain），底部半透明标题栏显示提示词 "a beautiful sunset over mountains"，无 JS 控制台报错。渲染完美。
+>
+> ### 14. 改动文件清单（第六轮）
+> - `src/config/device_dev.json`：添加 ai_text / ai_image 到循环配置。
+> - `venv`：安装 `socksio` 依赖。
+>
 > ## 已知未解决问题（下次任务可继续）
 >
 > 1. **缺少必填配置导致的 500（预期行为）**

@@ -96,6 +96,29 @@
                             "secondaryColor": "#000000"
                         },
                         "latest_refresh_time": null
+                    },
+                    {
+                        "plugin_id": "ai_text",
+                        "refresh_interval_seconds": 3600,
+                        "plugin_settings": {
+                            "provider": "deepseek",
+                            "textPrompt": "Tell me an interesting science fact",
+                            "deepseekTextModel": "deepseek-v4-flash",
+                            "backgroundColor": "#1a1a2e",
+                            "textColor": "#e0e0e0"
+                        },
+                        "latest_refresh_time": null
+                    },
+                    {
+                        "plugin_id": "ai_image",
+                        "refresh_interval_seconds": 3600,
+                        "plugin_settings": {
+                            "provider": "siliconflow",
+                            "textPrompt": "a beautiful sunset over mountains",
+                            "siliconflowImageModel": "Kwai-Kolors/Kolors",
+                            "showTitle": "true"
+                        },
+                        "latest_refresh_time": null
                     }
                 ],
                 "current_plugin_index": 0,
@@ -107,9 +130,9 @@
         "active_loop": null
     },
     "refresh_info": {
-        "refresh_time": "2026-07-31T17:53:25.598276",
+        "refresh_time": "2026-07-31T22:13:40.276895",
         "refresh_type": "Data Fetch",
-        "plugin_id": "art_museum"
+        "plugin_id": "ai_image"
     },
     "plugin_order": [],
     "proxy": {
@@ -135,7 +158,7 @@
     },
     "loop_override": {
         "type": "plugin",
-        "plugin_id": "art_museum"
+        "plugin_id": "ai_image"
     },
     "plugin_last_settings_clock": {
         "selectedClockFace": "Digital Clock",
