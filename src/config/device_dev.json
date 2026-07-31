@@ -19,9 +19,10 @@
                         "refresh_interval_seconds": 1800,
                         "plugin_settings": {
                             "albumProvider": "Immich",
-                            "url": "http://192.168.28.130:2283",
+                            "url": "https://immich.toby-blog.com",
                             "album": "happy",
-                            "fitMode": "fit"
+                            "fitMode": "blur",
+                            "randomize": "false"
                         },
                         "latest_refresh_time": null
                     },
@@ -46,9 +47,9 @@
         "active_loop": null
     },
     "refresh_info": {
-        "refresh_time": "2026-07-31T11:52:53.681542",
+        "refresh_time": "2026-07-31T17:00:52.746822",
         "refresh_type": "Data Fetch",
-        "plugin_id": "clock"
+        "plugin_id": "image_album"
     },
     "plugin_order": [],
     "proxy": {
@@ -56,9 +57,10 @@
     },
     "plugin_last_settings_image_album": {
         "albumProvider": "Immich",
-        "url": "http://192.168.28.130:2283",
+        "url": "https://immich.toby-blog.com",
         "album": "happy",
-        "fitMode": "fit"
+        "fitMode": "blur",
+        "randomize": "false"
     },
     "plugin_last_settings_image_upload": {
         "_previous_files": [
@@ -69,7 +71,10 @@
         ],
         "image_index": 0
     },
-    "loop_override": null,
+    "loop_override": {
+        "type": "plugin",
+        "plugin_id": "image_album"
+    },
     "plugin_last_settings_clock": {
         "selectedClockFace": "Digital Clock",
         "autoRefresh": "1",

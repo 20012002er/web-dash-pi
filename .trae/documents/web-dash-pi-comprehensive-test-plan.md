@@ -33,12 +33,24 @@
 > - `src/templates/display.html`：加载 `Jost`、`DS-Digital`、`Napoli`、`Dogica` 字体族。
 > - `src/config/device_dev.json`：清除了测试用的 `loop_override`（当前为 `null`）；循环中 Clock 的 `selectedClockFace` 当前为 Digital（可恢复默认 Gradient）。
 >
+> ### 5. Image Album 插件功能测试与前端渲染验证（2026-07-31 第二轮）
+> - **Immich 地址替换**：将 `device_dev.json` 中 Immich URL 从内网 `http://192.168.28.130:2283` 替换为公网 `https://immich.toby-blog.com`，相册名 `happy`。
+> - **后端 API 测试**：`GET /api/plugin/image_album/data` 返回 200，成功获取 `image_url` 和 `fit_mode`，图片文件（~898KB jpeg）已下载至 `src/static/images/saved/image_album_current.jpeg`。
+> - **图片静态资源访问**：`GET /static/images/saved/image_album_current.jpeg` 返回 200，Content-Type 为 `image/jpeg`。
+> - **前端渲染验证**：
+>   - 管理页 `/`：Image Album 插件卡片正常显示，图标加载正常。
+>   - 设置页 `/plugin/image_album`：表单渲染正确，URL/Album/DisplayMode 等字段值均正确。
+>   - Display 页 `/display`：通过 pin_plugin 强制切换到 image_album 后，图片正确加载并显示，`fit_mode=fit` 以 `object-fit: contain` 渲染（letterbox 模式，黑边填充），无 JS 控制台报错。
+> - **已知差异**：`dashboard.html` 中 `blur` 模式（模糊背景填充）未实现，当前仅支持 `fit`（contain）和 `fill`（cover）两种模式。
+>
+> ### 6. 改动文件清单（第二轮）
+> - `src/config/device_dev.json`：Immich URL 替换为 `https://immich.toby-blog.com`。
+>
 > ## 已知未解决问题（下次任务可继续）
 >
 > 1. **外部网络不可达插件（非项目 bug）**
->    - `image_album`：配置的 Immich 服务端 `192.168.28.130:2283` 在当前环境不可达，导致超时。
->    - `wpotd`：Wikipedia API 在当前环境连接超时。
->    - 处理建议：在可访问对应服务的网络中重新测试；或在插件中增加更短的兜底超时与友好错误提示。
+>    - `image_album`：已通过公网地址 `https://immich.toby-blog.com` 验证通过（见上节）。
+>    - `wpotd`：Wikipedia API 在当前环境连接超时（待后续验证）。
 >
 > 2. **缺少必填配置导致的 500（预期行为）**
 >    - `calendar`、`comic`、`countdown` 等插件未配置目标日期/源时返回 500，属于正常校验。
@@ -243,6 +255,6 @@
 - [x] `pytest -v` 全部通过。
 - [ ] 管理页所有链接可访问、所有插件卡片可渲染（已确认首页/循环/API 密钥页可访问，未逐项点击所有管理页）。
 - [x] `/display` 在配置 loop 后每 1 秒轮询并正确切换插件。
-- [ ] 26 个插件中，无 API key 依赖的插件 100% 验证通过；有 key 依赖的插件在配置 key 后验证通过（Clock 已修复并验证；image_album/wpotd 因外部网络不可达超时；其余插件多因缺少配置返回 500）。
-- [ ] 前端页面渲染在信息字段和交互行为上与 OpenClaw-DashPi 无功能性差异（Clock 已对齐；其余插件尚未逐项对比）。
+- [ ] 26 个插件中，无 API key 依赖的插件 100% 验证通过；有 key 依赖的插件在配置 key 后验证通过（Clock 已修复并验证；image_album 已通过公网 Immich 验证通过；wpotd 因外部网络不可达超时；其余插件多因缺少配置返回 500）。
+- [ ] 前端页面渲染在信息字段和交互行为上与 OpenClaw-DashPi 无功能性差异（Clock 已对齐；image_album 基本功能已验证，blur 模式未实现；其余插件尚未逐项对比）。
 - [x] `.env`、`device.json` 未被提交或意外暴露。

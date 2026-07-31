@@ -1,18 +1,29 @@
-<div class="plugin-image" style="width:100%;height:100%;background:#000;position:relative;">
-  <img id="plugin-image-img" style="width:100%;height:100%;object-fit:cover;" alt="" />
+<div class="plugin-image" style="width:100%;height:100%;background:#000;position:relative;overflow:hidden;">
+  <!-- Blurred background layer (only visible in blur mode) -->
+  <img id="plugin-image-bg" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;filter:blur(30px) brightness(0.6);transform:scale(1.1);z-index:0;display:none;" alt="" />
+  <!-- Foreground image layer -->
+  <img id="plugin-image-img" style="position:relative;width:100%;height:100%;object-fit:cover;z-index:1;" alt="" />
   <script>
     (function () {
       var img = document.getElementById('plugin-image-img');
+      var bg = document.getElementById('plugin-image-bg');
 
       window.addEventListener('plugin-data', function (e) {
         var data = (e.detail && e.detail.data) || {};
         if (data.image_url) {
-          // Cache-bust so refreshes pick up the newly downloaded file.
-          img.src = data.image_url + '?t=' + Date.now();
+          var src = data.image_url + '?t=' + Date.now();
+          img.src = src;
+          bg.src = src;
         }
-        // fit: letterbox (contain), fill: crop (cover), blur: show full image
-        var fitMode = data.fit_mode || 'cover';
-        img.style.objectFit = fitMode === 'fill' ? 'cover' : 'contain';
+        // fit: letterbox (contain), fill: crop (cover), blur: full image with blurred background
+        var fitMode = data.fit_mode || 'fill';
+        if (fitMode === 'blur') {
+          bg.style.display = 'block';
+          img.style.objectFit = 'contain';
+        } else {
+          bg.style.display = 'none';
+          img.style.objectFit = fitMode === 'fill' ? 'cover' : 'contain';
+        }
       });
 
       window.addEventListener('plugin-data-error', function (e) {
