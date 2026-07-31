@@ -130,7 +130,7 @@
         "active_loop": null
     },
     "refresh_info": {
-        "refresh_time": "2026-07-31T22:46:17.535860",
+        "refresh_time": "2026-07-31T23:01:59.448236",
         "refresh_type": "Data Fetch",
         "plugin_id": "clock"
     },
@@ -162,5 +162,19 @@
         "autoRefresh": "1",
         "primaryColor": "#ffffff",
         "secondaryColor": "#000000"
-    }
+    },
+    "stocks_saved_tickers": [
+        {
+            "symbol": "AAPL",
+            "name": "AAPL"
+        },
+        {
+            "symbol": "GOOGL",
+            "name": "GOOGL"
+        },
+        {
+            "symbol": "MSFT",
+            "name": "MSFT"
+        }
+    ]
 }

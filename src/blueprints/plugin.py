@@ -546,12 +546,15 @@ def save_tickers():
         else:
             ticker_data[t] = {"symbol": t, "name": t}
 
-    # Reorder based on new_order, preserving ticker data
+    # Reorder based on new_order, preserving existing ticker data.
+    # New symbols not yet saved are added automatically.
     reordered = []
     for symbol in new_order[:6]:
         symbol_upper = symbol.strip().upper() if isinstance(symbol, str) else symbol
         if symbol_upper in ticker_data:
             reordered.append(ticker_data[symbol_upper])
+        else:
+            reordered.append({"symbol": symbol_upper, "name": symbol_upper})
 
     device_config.update_value("stocks_saved_tickers", reordered, write=True)
     return jsonify({"success": True, "tickers": reordered})
