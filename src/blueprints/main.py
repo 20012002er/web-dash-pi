@@ -126,6 +126,13 @@ def skip_to_next():
         )
         refresh_task.queue_manual_update(refresh_action)
 
+        # Reset the rotation timer so the next automatic rotation waits
+        # a full interval instead of firing immediately.
+        refresh_task.reset_rotation_timer()
+
+        # Persist the updated loop state (current_plugin_index etc.)
+        device_config.write_config()
+
         # Get display name for response
         plugin_config = device_config.get_plugin(plugin_ref.plugin_id)
         plugin_name = (

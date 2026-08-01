@@ -63,67 +63,16 @@ class RefreshTask:
 
     Unlike the original background-thread RefreshTask, this class does not
     render images or push anything to a display. Instead:
-      * ``determine_current_plugin()`` consults the live config (loop override,
-        loop_enabled, LoopManager) to decide which plugin should be active now.
+      * ``get_current_state()`` consults the live config (loop override,
+        loop_enabled, LoopManager) to decide which plugin should be active
+        now, and also drives loop rotation when the interval has elapsed.
       * ``record_refresh()`` persists a RefreshInfo entry.
-      * ``get_current_state()`` returns the snapshot the frontend polls.
     """
 
     def __init__(self, config):
         self.config = config
         self.running = True
         self.last_loop_rotation_time = datetime.now()
-
-    # ------------------------------------------------------------------
-    # Plugin selection
-    # ------------------------------------------------------------------
-    def determine_current_plugin(self):
-        """Determine which plugin should be active right now.
-
-        Resolution order:
-          1. ``loop_override`` of type ``"plugin"`` → return that plugin with
-             ``loop_name=None``.
-          2. ``loop_override`` of type ``"loop"`` → use that loop's next plugin.
-          3. If ``loop_enabled`` is False → return ``(None, None)``.
-          4. Otherwise consult ``LoopManager.determine_active_loop`` and return
-             the loop's current/next plugin plus the loop name.
-          5. Fall back to ``(None, None)`` if nothing is active.
-
-        Returns:
-            tuple: ``(plugin_id, loop_name)`` where either may be ``None``.
-        """
-        loop_override = self.config.get_loop_override()
-
-        if loop_override:
-            if loop_override.get("type") == "plugin":
-                return loop_override.get("plugin_id"), None
-            if loop_override.get("type") == "loop":
-                loop_name = loop_override.get("loop_name")
-                loop = self.config.get_loop_manager().get_loop(loop_name) if loop_name else None
-                if loop and loop.plugin_order:
-                    ref = loop.peek_next_plugin() or loop.get_next_plugin()
-                    if ref:
-                        return ref.plugin_id, loop.name
-                # fall through if override loop not found / empty
-
-        loop_enabled = self.config.get_config("loop_enabled", default=True)
-        if not loop_enabled:
-            return None, None
-
-        loop_manager = self.config.get_loop_manager()
-        if loop_manager is None:
-            return None, None
-
-        loop = loop_manager.determine_active_loop(datetime.now(), override=loop_override)
-        if loop is None or not loop.plugin_order:
-            return None, None
-
-        # Prefer the loop's pre-computed current/next plugin so the frontend
-        # stays in sync with the LoopManager's state machine.
-        ref = loop.peek_next_plugin() or loop.get_next_plugin()
-        if ref is None:
-            return None, None
-        return ref.plugin_id, loop.name
 
     # ------------------------------------------------------------------
     # Refresh recording
@@ -153,6 +102,14 @@ class RefreshTask:
         # Intentionally a no-op — config is read live by get_current_state().
         return None
 
+    def reset_rotation_timer(self):
+        """Reset the loop rotation timer to now.
+
+        Call this after a manual skip so the next automatic rotation
+        waits a full interval instead of firing immediately.
+        """
+        self.last_loop_rotation_time = datetime.now()
+
     # ------------------------------------------------------------------
     # Manual update entry points (kept for API parity)
     # ------------------------------------------------------------------
@@ -177,6 +134,10 @@ class RefreshTask:
     def get_current_state(self):
         """Return a dict snapshot describing the current dashboard state.
 
+        This method also drives the loop rotation: when the rotation
+        interval has elapsed since the last rotation, the active loop's
+        plugin index is advanced and the new state is persisted.
+
         Keys:
             plugin_id:           active plugin id (or None)
             loop_name:           active loop name (or None)
@@ -187,9 +148,78 @@ class RefreshTask:
             current_plugin:      display name of the active plugin
             next_plugin:         display name of the next plugin
         """
-        plugin_id, loop_name = self.determine_current_plugin()
-
         loop_manager = self.config.get_loop_manager()
+        loop_override = self.config.get_loop_override()
+        loop_enabled = self.config.get_config("loop_enabled", default=True)
+
+        # --- Resolve override (plugin pin) ---
+        if loop_override and loop_override.get("type") == "plugin":
+            plugin_id = loop_override.get("plugin_id")
+            return self._build_state(
+                plugin_id, None, loop_manager, loop_override, loop_enabled,
+            )
+
+        # --- Loop disabled ---
+        if not loop_enabled or loop_manager is None:
+            return self._build_state(
+                None, None, loop_manager, loop_override, loop_enabled,
+            )
+
+        # --- Determine active loop ---
+        loop = loop_manager.determine_active_loop(
+            datetime.now(), override=loop_override,
+        )
+        if loop is None or not loop.plugin_order:
+            return self._build_state(
+                None, None, loop_manager, loop_override, loop_enabled,
+            )
+
+        # --- Auto-rotate when the rotation interval has elapsed ---
+        rotation_interval = loop_manager.rotation_interval_seconds
+        now = datetime.now()
+
+        if rotation_interval and self.last_loop_rotation_time:
+            elapsed = (now - self.last_loop_rotation_time).total_seconds()
+            if elapsed >= rotation_interval:
+                ref = loop.get_next_plugin()
+                if ref:
+                    self.last_loop_rotation_time = now
+                    self.record_refresh(ref.plugin_id, "Loop", loop_name=loop.name)
+
+        # --- Read current plugin (peek, do NOT advance) ---
+        # If indices are not yet initialised (e.g. first start after upgrade),
+        # call get_next_plugin() once to set them up without rotating away
+        # from the intended first plugin.
+        if loop.next_plugin_index is None and loop.current_plugin_index is None:
+            ref = loop.get_next_plugin()
+            if ref:
+                self.last_loop_rotation_time = now
+                self.record_refresh(ref.plugin_id, "Loop", loop_name=loop.name)
+        else:
+            # Current plugin is at current_plugin_index, NOT next_plugin_index.
+            # peek_next_plugin() returns the NEXT plugin, so we must read
+            # the current one directly from plugin_order.
+            idx = loop.current_plugin_index
+            if idx is not None and 0 <= idx < len(loop.plugin_order):
+                ref = loop.plugin_order[idx]
+            else:
+                ref = loop.peek_next_plugin()
+        if ref is None:
+            return self._build_state(
+                None, None, loop_manager, loop_override, loop_enabled,
+            )
+
+        return self._build_state(
+            ref.plugin_id, loop.name, loop_manager, loop_override,
+            loop_enabled, active_loop=loop,
+        )
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+    def _build_state(self, plugin_id, loop_name, loop_manager, loop_override,
+                     loop_enabled, active_loop=None):
+        """Assemble the state dict returned by ``get_current_state``."""
         rotation_interval = (
             loop_manager.rotation_interval_seconds if loop_manager else 0
         )
@@ -202,12 +232,14 @@ class RefreshTask:
         # Peek the next plugin from the active loop, if any
         next_plugin_id = None
         if loop_manager:
-            loop_override = self.config.get_loop_override()
-            active_loop = loop_manager.determine_active_loop(
-                datetime.now(), override=loop_override
-            ) if loop_name else loop_manager.get_loop(loop_name)
-            if active_loop and active_loop.plugin_order:
-                next_ref = active_loop.peek_next_plugin()
+            al = active_loop
+            if al is None:
+                loop_override_cur = self.config.get_loop_override()
+                al = loop_manager.determine_active_loop(
+                    datetime.now(), override=loop_override_cur
+                ) if loop_name else loop_manager.get_loop(loop_name)
+            if al and al.plugin_order:
+                next_ref = al.peek_next_plugin()
                 if next_ref:
                     next_plugin_id = next_ref.plugin_id
 
@@ -216,15 +248,12 @@ class RefreshTask:
             "loop_name": loop_name,
             "remaining_seconds": remaining_seconds,
             "next_plugin_id": next_plugin_id,
-            "override": self.config.get_loop_override(),
-            "loop_enabled": self.config.get_config("loop_enabled", default=True),
+            "override": loop_override,
+            "loop_enabled": loop_enabled,
             "current_plugin": self._get_display_name(plugin_id),
             "next_plugin": self._get_display_name(next_plugin_id),
         }
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
     def _get_display_name(self, plugin_id):
         """Look up a plugin's human-readable display name in plugins_list."""
         if not plugin_id:

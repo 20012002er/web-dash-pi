@@ -121,60 +121,16 @@
                         "latest_refresh_time": null
                     }
                 ],
-                "current_plugin_index": 5,
+                "current_plugin_index": 4,
                 "randomize": false,
-                "next_plugin_index": 6
+                "next_plugin_index": 5
             }
         ],
-        "rotation_interval_seconds": 10,
+        "rotation_interval_seconds": 300,
         "active_loop": null
     },
     "refresh_info": {
-        "refresh_time": "2026-08-01T08:33:58.508003",
-        "refresh_type": "Data Fetch",
-        "plugin_id": "apod"
-    },
-    "plugin_order": [],
-    "proxy": {
-        "enabled": true,
-        "host": "127.0.0.1",
-        "port": "7890"
-    },
-    "plugin_last_settings_image_album": {
-        "albumProvider": "Immich",
-        "url": "https://immich.toby-blog.com",
-        "album": "happy",
-        "fitMode": "blur",
-        "randomize": "false"
-    },
-    "plugin_last_settings_image_upload": {
-        "_previous_files": [
-            "/Users/lazybeartoby/develop/work_test/web-dash-pi/src/static/images/saved/image_album_current.jpg"
-        ],
-        "imageFiles[]": [
-            "/Users/lazybeartoby/develop/work_test/web-dash-pi/src/static/images/saved/image_album_current.jpg"
-        ],
-        "image_index": 0
-    },
-    "loop_override": null,
-    "plugin_last_settings_clock": {
-        "selectedClockFace": "Digital Clock",
-        "autoRefresh": "1",
-        "primaryColor": "#ffffff",
-        "secondaryColor": "#000000"
-    },
-    "stocks_saved_tickers": [
-        {
-            "symbol": "AAPL",
-            "name": "AAPL"
-        },
-        {
-            "symbol": "GOOGL",
-            "name": "GOOGL"
-        },
-        {
-            "symbol": "MSFT",
-            "name": "MSFT"
-        }
-    ]
-}
+        "refresh_time": "2026-08-01T08:25:12.470704",
+        "refresh_type": "Manual Update",
+        "plugin_id": "unsplash",
+        "loop": 
