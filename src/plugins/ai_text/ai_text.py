@@ -87,9 +87,9 @@ class AIText(BasePlugin):
         # Convert literal \n to actual newlines for the frontend
         formatted_response = prompt_response.replace('\\n', '\n')
 
-        # Colors (default to light theme if unset)
-        background_color = settings.get("backgroundColor", "#ffffff")
-        text_color = settings.get("textColor", "#000000")
+        # Colors (default to dark theme if unset)
+        background_color = settings.get("backgroundColor", "#000000")
+        text_color = settings.get("textColor", "#e0e0e0")
 
         logger.info("=== AI Text Plugin: Text generation complete ===")
         return {

@@ -179,8 +179,9 @@ function executeInjectedScripts(container) {
 /**
  * Start periodic data fetching for the current plugin.
  *
- * Fetches immediately, then on a fixed interval. Plugins may override the
- * cadence via window.setDataRefreshInterval.
+ * Fetches immediately, then on a fixed interval. The interval is initially
+ * DEFAULT_DATA_REFRESH_MS (60s) but will be updated when the first data
+ * response carries a ``refresh_interval_seconds`` from the server.
  *
  * @param {string} pluginId - The plugin whose data to refresh.
  */
@@ -227,6 +228,21 @@ async function fetchPluginData(pluginId) {
         window.dispatchEvent(new CustomEvent('plugin-data', {
             detail: { pluginId, data: result.data, settings: result.settings }
         }));
+
+        // If the server returned a per-plugin refresh interval, adjust our
+        // polling cadence so we don't hammer the backend unnecessarily.
+        if (result.refresh_interval_seconds) {
+            const serverIntervalMs = result.refresh_interval_seconds * 1000;
+            // Only adjust if the timer is still running (plugin hasn't
+            // overridden it via setDataRefreshInterval).
+            if (dataRefreshTimer && serverIntervalMs !== DEFAULT_DATA_REFRESH_MS) {
+                clearDataRefreshTimer();
+                dataRefreshTimer = setInterval(
+                    () => fetchPluginData(currentPluginId),
+                    serverIntervalMs
+                );
+            }
+        }
     } catch (err) {
         console.error('Data fetch error:', err);
         window.dispatchEvent(new CustomEvent('plugin-data-error', {

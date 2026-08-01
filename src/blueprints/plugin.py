@@ -7,6 +7,7 @@ from utils.http_client import get_http_session
 from refresh_task import ManualRefresh
 import os
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 plugin_bp = Blueprint("plugin", __name__)
@@ -368,17 +369,36 @@ def get_plugin_data(plugin_id):
     #    (these are the settings the user configured when adding to the loop).
     # 2. Otherwise, fall back to last-used settings from the plugin settings page.
     settings = {}
+    refresh_interval_seconds = None
+    plugin_ref = None
     loop_manager = device_config.get_loop_manager()
     if loop_manager:
         for loop in loop_manager.loops:
             for ref in loop.plugin_order:
-                if ref.plugin_id == plugin_id and ref.plugin_settings:
-                    settings = dict(ref.plugin_settings)
-                    break
+                if ref.plugin_id == plugin_id:
+                    plugin_ref = ref
+                    if ref.plugin_settings:
+                        settings = dict(ref.plugin_settings)
+                        refresh_interval_seconds = ref.refresh_interval_seconds
+                        break
             if settings:
                 break
     if not settings:
         settings = device_config.get_config(f"plugin_last_settings_{plugin_id}", default={})
+
+    # Respect the per-plugin refresh interval: if the plugin was refreshed
+    # recently, return cached data instead of calling get_data() again.
+    if refresh_interval_seconds and plugin_ref and not plugin_ref.should_refresh(datetime.now()):
+        # Not yet time to refresh — return cached data if available
+        cached = device_config.get_config(f"plugin_cached_data_{plugin_id}", default=None)
+        if cached is not None:
+            return jsonify({
+                "success": True,
+                "settings": settings,
+                "data": cached,
+                "refresh_interval_seconds": refresh_interval_seconds,
+                "cached": True,
+            }), 200
 
     try:
         data = plugin.get_data(settings, device_config)
@@ -388,6 +408,12 @@ def get_plugin_data(plugin_id):
         logger.exception(f"Plugin '{plugin_id}' get_data failed")
         return jsonify({"error": f"Internal error: {str(e)}"}), 500
 
+    # Cache the fresh data and update the plugin reference's refresh time
+    device_config.update_value(f"plugin_cached_data_{plugin_id}", data, write=False)
+    if plugin_ref:
+        plugin_ref.latest_refresh_time = datetime.now().isoformat()
+        device_config.write_config()
+
     # Fire-and-forget refresh record (no await)
     if refresh_task:
         try:
@@ -395,7 +421,13 @@ def get_plugin_data(plugin_id):
         except Exception:
             logger.debug("record_refresh failed for plugin %s", plugin_id, exc_info=True)
 
-    return jsonify({"success": True, "settings": settings, "data": data}), 200
+    return jsonify({
+        "success": True,
+        "settings": settings,
+        "data": data,
+        "refresh_interval_seconds": refresh_interval_seconds,
+        "cached": False,
+    }), 200
 
 
 @plugin_bp.route('/update_now_async', methods=['POST'])

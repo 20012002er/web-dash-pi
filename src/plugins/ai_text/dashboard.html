@@ -66,8 +66,8 @@
 
         // Apply configured colors
         var container = document.getElementById('plugin-ai-text-root');
-        container.style.backgroundColor = data.background_color || '#ffffff';
-        container.style.color = data.text_color || '#000000';
+        container.style.backgroundColor = data.background_color || '#000000';
+        container.style.color = data.text_color || '#e0e0e0';
 
         var html = '';
         if (data.title) {
@@ -83,7 +83,7 @@
     function renderError(msg) {
         var root = document.getElementById('plugin-ai-text-content');
         var container = document.getElementById('plugin-ai-text-root');
-        container.style.backgroundColor = '#ffffff';
+        container.style.backgroundColor = '#000000';
         container.style.color = '#ff6b6b';
         root.innerHTML = '<div class="at-error">' + msg + '</div>';
     }
