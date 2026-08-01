@@ -40,12 +40,13 @@ def create_loop():
     name = data.get("name")
     start_time = data.get("start_time")
     end_time = data.get("end_time")
+    rotation_interval = data.get("rotation_interval_seconds")
 
     # Validation
     if not name or not start_time or not end_time:
         return jsonify({"error": "Missing required fields"}), 400
 
-    if not loop_manager.add_loop(name, start_time, end_time):
+    if not loop_manager.add_loop(name, start_time, end_time, rotation_interval_seconds=rotation_interval):
         return jsonify({"error": f"Loop '{name}' already exists"}), 400
 
     device_config.write_config()
@@ -64,8 +65,9 @@ def update_loop():
     new_name = data.get("new_name")
     start_time = data.get("start_time")
     end_time = data.get("end_time")
+    rotation_interval = data.get("rotation_interval_seconds")
 
-    if not loop_manager.update_loop(old_name, new_name, start_time, end_time):
+    if not loop_manager.update_loop(old_name, new_name, start_time, end_time, rotation_interval_seconds=rotation_interval):
         return jsonify({"error": f"Loop '{old_name}' not found"}), 404
 
     device_config.write_config()
@@ -303,9 +305,12 @@ def search_city():
 
 @loops_bp.route('/refresh_plugin_now', methods=['POST'])
 def refresh_plugin_now():
-    """Immediately queue a refresh for a specific plugin from a loop.
+    """Immediately switch to a specific plugin and queue a refresh.
 
-    Returns 202 Accepted immediately - the refresh happens asynchronously in the background.
+    Sets the loop's current_plugin_index to the target plugin so the
+    display switches right away.  The rotation timer is reset so the
+    next automatic rotation waits a full interval, and subsequent
+    rotations continue in normal loop order from the new position.
     """
     from refresh_task import LoopRefresh
 
@@ -321,30 +326,42 @@ def refresh_plugin_now():
     if not loop:
         return jsonify({"error": "Loop not found"}), 404
 
-    # Find the plugin reference in the loop
-    plugin_ref = next((ref for ref in loop.plugin_order if ref.plugin_id == plugin_id), None)
+    # Find the plugin reference and its index in the loop
+    plugin_ref = None
+    plugin_index = None
+    for i, ref in enumerate(loop.plugin_order):
+        if ref.plugin_id == plugin_id:
+            plugin_ref = ref
+            plugin_index = i
+            break
+
     if not plugin_ref:
         return jsonify({"error": "Plugin not found in loop"}), 404
 
     try:
-        # Queue the refresh without blocking - returns immediately.
-        # New LoopRefresh signature: (plugin_id, settings=, loop=, plugin_reference=)
+        # --- Switch the loop to display this plugin now ---
+        loop.current_plugin_index = plugin_index
+        loop._compute_next_plugin_index()
+
+        # Reset the rotation timer so the next auto-rotation waits a full interval
+        refresh_task.reset_rotation_timer()
+
+        # Queue the refresh (non-blocking)
         refresh_action = LoopRefresh(
             plugin_id,
             settings=plugin_ref.plugin_settings,
             loop=loop,
             plugin_reference=plugin_ref,
         )
-        queued = refresh_task.queue_manual_update(refresh_action)
+        refresh_task.queue_manual_update(refresh_action)
 
-        if queued:
-            # Return 202 Accepted - refresh is happening in background
-            return jsonify({
-                "success": True,
-                "message": f"Refreshing {plugin_id}... Display will update shortly."
-            }), 202
-        else:
-            return jsonify({"error": "Refresh task not running"}), 503
+        # Persist the updated loop state
+        device_config.write_config()
+
+        return jsonify({
+            "success": True,
+            "message": f"Switched to {plugin_id}. Display will update shortly."
+        }), 202
     except Exception as e:
-        logger.error(f"Error queuing refresh: {e}")
+        logger.error(f"Error switching plugin: {e}")
         return jsonify({"error": str(e)}), 500

@@ -44,10 +44,10 @@
             <span id="loopsStatusText" class="live-status-text">Ready</span>
         </div>
 
-        <!-- Global Rotation Interval Setting -->
+        <!-- Global Default Rotation Interval Setting -->
         <div class="status-dashboard-card">
-            <h3 class="countdown-label" style="font-size: 14px; text-transform: none; margin-bottom: 8px;">Display Rotation</h3>
-            <p class="plugin-info-label" style="text-transform: none; margin-bottom: 12px;">How often the display switches to the next plugin</p>
+            <h3 class="countdown-label" style="font-size: 14px; text-transform: none; margin-bottom: 8px;">Default Display Rotation</h3>
+            <p class="plugin-info-label" style="text-transform: none; margin-bottom: 12px;">Default interval for loops that don't set their own. Each loop can override this value.</p>
             <div style="display: flex; align-items: center; gap: 10px;">
                 <input type="number" id="rotation-interval" value="{{ (loop_config.rotation_interval_seconds / 60) | int }}"
                        min="1" class="form-input" style="width: 80px;">
@@ -84,6 +84,14 @@
                         <span style="display: inline-block; margin-left: 10px; padding: 4px 10px; background: var(--success-color); color: white; border-radius: 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.5px;">ACTIVE</span>
                         {% endif %}
                         <div style="margin-top: 6px; font-size: 13px; color: var(--text-secondary); font-weight: 400;">{{ loop_item.start_time }} - {{ loop_item.end_time }}</div>
+                        <div style="margin-top: 4px; font-size: 12px; color: var(--text-secondary);">
+                            Rotation:
+                            {% if loop_item.rotation_interval_seconds %}
+                                {% if loop_item.rotation_interval_seconds < 60 %}{{ loop_item.rotation_interval_seconds | int }}s{% elif loop_item.rotation_interval_seconds < 3600 %}{{ (loop_item.rotation_interval_seconds / 60) | int }} min{% else %}{{ (loop_item.rotation_interval_seconds / 3600) | int }}h{% endif %}
+                            {% else %}
+                                <em>Default ({{ (loop_config.rotation_interval_seconds / 60) | int }} min)</em>
+                            {% endif %}
+                        </div>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
                         {% set is_override = loop_override and loop_override.type == 'loop' and loop_override.loop_name == loop_item.name %}
@@ -104,6 +112,7 @@
                         <button data-loop-name="{{ loop_item.name }}"
                                 data-start-time="{{ loop_item.start_time }}"
                                 data-end-time="{{ loop_item.end_time }}"
+                                data-rotation-interval="{{ loop_item.rotation_interval_seconds or '' }}"
                                 class="edit-loop-btn action-button"
                                 style="background: var(--button-bg); padding: 8px 14px; font-size: 14px; font-weight: 500; color: var(--text-primary);">
                             Edit
@@ -196,6 +205,16 @@
                 <div style="margin: 15px 0;">
                     <label>End Time:</label>
                     <input type="time" id="endTime" required style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                </div>
+                <div style="margin: 15px 0;">
+                    <label>Display Rotation <span style="font-weight: 400; color: #888; font-size: 12px;">(leave empty to use default)</span>:</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="number" id="loopRotationInterval" min="1" placeholder="Default" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        <select id="loopRotationUnit" style="width: 100px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="minute">Minutes</option>
+                            <option value="hour">Hours</option>
+                        </select>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                     <button type="submit" style="flex: 1; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Save</button>

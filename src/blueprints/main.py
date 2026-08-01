@@ -240,12 +240,18 @@ def get_next_change_time():
     if not refresh_task or not refresh_task.running:
         return jsonify({"error": "Refresh task not running"}), 503
 
-    # Get the rotation interval from loop manager
-    loop_manager = device_config.get_loop_manager()
-    interval_seconds = loop_manager.rotation_interval_seconds
-
     # Use the refresh task's current state for countdown/plugin info
     state = refresh_task.get_current_state()
+
+    # Get the rotation interval — prefer the active loop's own setting.
+    loop_manager = device_config.get_loop_manager()
+    interval_seconds = loop_manager.rotation_interval_seconds
+    loop_name = state.get("loop_name")
+    if loop_name:
+        active_loop = loop_manager.get_loop(loop_name)
+        if active_loop:
+            interval_seconds = active_loop.get_effective_rotation_interval(interval_seconds)
+
     remaining_seconds = state.get("remaining_seconds", interval_seconds)
     current_plugin_name = state.get("current_plugin")
     next_plugin_name = state.get("next_plugin")

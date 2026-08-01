@@ -175,7 +175,10 @@ class RefreshTask:
             )
 
         # --- Auto-rotate when the rotation interval has elapsed ---
-        rotation_interval = loop_manager.rotation_interval_seconds
+        # Use per-loop interval if set, otherwise fall back to global default.
+        rotation_interval = loop.get_effective_rotation_interval(
+            loop_manager.rotation_interval_seconds
+        )
         now = datetime.now()
 
         if rotation_interval and self.last_loop_rotation_time:
@@ -220,9 +223,15 @@ class RefreshTask:
     def _build_state(self, plugin_id, loop_name, loop_manager, loop_override,
                      loop_enabled, active_loop=None):
         """Assemble the state dict returned by ``get_current_state``."""
-        rotation_interval = (
-            loop_manager.rotation_interval_seconds if loop_manager else 0
-        )
+        # Use per-loop interval if set, otherwise fall back to global default.
+        if active_loop:
+            rotation_interval = active_loop.get_effective_rotation_interval(
+                loop_manager.rotation_interval_seconds if loop_manager else 0
+            )
+        else:
+            rotation_interval = (
+                loop_manager.rotation_interval_seconds if loop_manager else 0
+            )
         if self.last_loop_rotation_time and rotation_interval:
             elapsed = (datetime.now() - self.last_loop_rotation_time).total_seconds()
             remaining_seconds = max(0, int(rotation_interval - elapsed))

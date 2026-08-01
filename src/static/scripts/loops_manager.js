@@ -1,4 +1,4 @@
-// Loop Mode Management JavaScript
+// Loop Mode Management JavaScript — per-loop rotation interval support
 
 // Modal Management
 function openCreateLoopModal() {
@@ -7,15 +7,32 @@ function openCreateLoopModal() {
     document.getElementById('loopName').value = '';
     document.getElementById('startTime').value = '07:00';
     document.getElementById('endTime').value = '18:00';
+    document.getElementById('loopRotationInterval').value = '';
+    document.getElementById('loopRotationUnit').value = 'minute';
     document.getElementById('loopModal').style.display = 'block';
 }
 
-function openEditLoopModal(name, startTime, endTime) {
+function openEditLoopModal(name, startTime, endTime, rotationIntervalSeconds) {
     document.getElementById('modalTitle').textContent = 'Edit Loop';
     document.getElementById('oldLoopName').value = name;
     document.getElementById('loopName').value = name;
     document.getElementById('startTime').value = startTime;
     document.getElementById('endTime').value = endTime;
+    // Populate per-loop rotation interval
+    const intervalInput = document.getElementById('loopRotationInterval');
+    const unitSelect = document.getElementById('loopRotationUnit');
+    if (rotationIntervalSeconds) {
+        if (rotationIntervalSeconds >= 3600 && rotationIntervalSeconds % 3600 === 0) {
+            intervalInput.value = rotationIntervalSeconds / 3600;
+            unitSelect.value = 'hour';
+        } else {
+            intervalInput.value = Math.round(rotationIntervalSeconds / 60);
+            unitSelect.value = 'minute';
+        }
+    } else {
+        intervalInput.value = '';
+        unitSelect.value = 'minute';
+    }
     document.getElementById('loopModal').style.display = 'block';
 }
 
@@ -42,10 +59,19 @@ document.getElementById('loopForm')?.addEventListener('submit', async (e) => {
     const startTime = document.getElementById('startTime').value;
     const endTime = document.getElementById('endTime').value;
 
+    // Build rotation_interval_seconds from the modal fields
+    const rawInterval = document.getElementById('loopRotationInterval').value;
+    const unit = document.getElementById('loopRotationUnit').value;
+    let rotationIntervalSeconds = null;
+    if (rawInterval) {
+        const val = parseInt(rawInterval, 10);
+        rotationIntervalSeconds = unit === 'hour' ? val * 3600 : val * 60;
+    }
+
     const endpoint = oldName ? '/update_loop' : '/create_loop';
     const payload = oldName
-        ? { old_name: oldName, new_name: name, start_time: startTime, end_time: endTime }
-        : { name, start_time: startTime, end_time: endTime };
+        ? { old_name: oldName, new_name: name, start_time: startTime, end_time: endTime, rotation_interval_seconds: rotationIntervalSeconds }
+        : { name, start_time: startTime, end_time: endTime, rotation_interval_seconds: rotationIntervalSeconds };
 
     try {
         const response = await fetch(endpoint, {
@@ -211,7 +237,12 @@ window.addEventListener('DOMContentLoaded', () => {
     // Edit loop buttons
     document.querySelectorAll('.edit-loop-btn').forEach(btn => {
         btn.addEventListener('click', function() {
-            openEditLoopModal(this.dataset.loopName, this.dataset.startTime, this.dataset.endTime);
+            openEditLoopModal(
+                this.dataset.loopName,
+                this.dataset.startTime,
+                this.dataset.endTime,
+                this.dataset.rotationInterval ? parseInt(this.dataset.rotationInterval, 10) : null
+            );
         });
     });
 

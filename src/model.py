@@ -90,23 +90,32 @@ class LoopManager:
         """Returns the loop with the specified name."""
         return next((loop for loop in self.loops if loop.name == loop_name), None)
 
-    def add_loop(self, name, start_time, end_time):
+    def add_loop(self, name, start_time, end_time, rotation_interval_seconds=None):
         """Creates and adds a new loop with the given time range."""
         if self.get_loop(name):
             logger.warning(f"Loop '{name}' already exists.")
             return False
-        self.loops.append(Loop(name, start_time, end_time))
+        self.loops.append(Loop(name, start_time, end_time, rotation_interval_seconds=rotation_interval_seconds))
         # Invalidate cache since loops changed
         self._cached_active_loop = None
         return True
 
-    def update_loop(self, old_name, new_name, start_time, end_time):
-        """Updates an existing loop's name and time range."""
+    _UNSET = object()  # Sentinel to distinguish "not provided" from explicit None
+
+    def update_loop(self, old_name, new_name, start_time, end_time, rotation_interval_seconds=_UNSET):
+        """Updates an existing loop's name, time range, and optionally rotation interval.
+
+        Pass ``rotation_interval_seconds=None`` to clear the per-loop value
+        (fall back to the global default).  Omit the parameter to leave it
+        unchanged.
+        """
         loop = self.get_loop(old_name)
         if loop:
             loop.name = new_name
             loop.start_time = start_time
             loop.end_time = end_time
+            if rotation_interval_seconds is not LoopManager._UNSET:
+                loop.rotation_interval_seconds = rotation_interval_seconds
             # Invalidate cached time range since times changed
             loop._cached_time_range_minutes = None
             # Invalidate active loop cache since loop properties changed
@@ -196,9 +205,11 @@ class Loop:
         plugin_order (list): Ordered list of PluginReference objects.
         current_plugin_index (int): Index of the currently displayed plugin.
         randomize (bool): If True, randomly select next plugin instead of sequential order.
+        rotation_interval_seconds (int): Per-loop display rotation interval, or None
+            to inherit the LoopManager's global default.
     """
 
-    def __init__(self, name, start_time, end_time, plugin_order=None, current_plugin_index=None, randomize=False, next_plugin_index=None):
+    def __init__(self, name, start_time, end_time, plugin_order=None, current_plugin_index=None, randomize=False, next_plugin_index=None, rotation_interval_seconds=None):
         self.name = name
         self.start_time = start_time
         self.end_time = end_time
@@ -206,6 +217,7 @@ class Loop:
         self.current_plugin_index = current_plugin_index
         self.randomize = randomize
         self.next_plugin_index = next_plugin_index  # Pre-computed next plugin
+        self.rotation_interval_seconds = rotation_interval_seconds  # None = use global default
 
         # Cache time range calculation to avoid repeated string parsing
         self._cached_time_range_minutes = None
@@ -351,16 +363,28 @@ class Loop:
         self._cached_time_range_minutes = int((end - start).total_seconds() // 60)
         return self._cached_time_range_minutes
 
+    def get_effective_rotation_interval(self, fallback=None):
+        """Return this loop's rotation interval, falling back to *fallback*.
+
+        If the loop has its own ``rotation_interval_seconds`` set, that value
+        is returned. Otherwise *fallback* (typically the LoopManager's global
+        default) is returned.
+        """
+        return self.rotation_interval_seconds if self.rotation_interval_seconds else fallback
+
     def to_dict(self):
-        return {
+        d = {
             "name": self.name,
             "start_time": self.start_time,
             "end_time": self.end_time,
             "plugin_order": [ref.to_dict() for ref in self.plugin_order],
             "current_plugin_index": self.current_plugin_index,
             "randomize": self.randomize,
-            "next_plugin_index": self.next_plugin_index
+            "next_plugin_index": self.next_plugin_index,
         }
+        if self.rotation_interval_seconds is not None:
+            d["rotation_interval_seconds"] = self.rotation_interval_seconds
+        return d
 
     @classmethod
     def from_dict(cls, data):
@@ -372,6 +396,7 @@ class Loop:
             current_plugin_index=data.get("current_plugin_index"),
             randomize=data.get("randomize", False),
             next_plugin_index=data.get("next_plugin_index"),
+            rotation_interval_seconds=data.get("rotation_interval_seconds"),
         )
 
 
