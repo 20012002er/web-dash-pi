@@ -16,3 +16,4 @@ yfinance
 akshare
 skyfield
 sgp4
+socksio
