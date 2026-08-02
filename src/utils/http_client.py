@@ -39,6 +39,34 @@ _NO_PROXY = "127.0.0.1,localhost,::1,192.168.0.0/16,10.0.0.0/8,172.16.0.0/12"
 _HTTP_SESSION: Optional[requests.Session] = None
 
 
+class _DashPiSession(requests.Session):
+    """Session that respects NO_PROXY even when trust_env=False.
+
+    The standard ``requests.Session`` only checks the ``NO_PROXY`` env var
+    inside ``rebuild_proxies`` when ``trust_env`` is True.  We need
+    ``trust_env=False`` to avoid picking up system proxy settings, but we
+    still want local/LAN addresses to bypass the configured proxy.
+
+    Overriding ``rebuild_proxies`` alone is insufficient because ``send()``
+    later calls ``merge_environment_settings()`` which re-populates proxies
+    from ``session.proxies``.  Instead we override ``send()`` and strip
+    proxies from the merged settings right before the connection is made.
+    """
+
+    def send(self, request, **kwargs):
+        from requests.utils import should_bypass_proxies
+        no_proxy = os.environ.get("NO_PROXY", os.environ.get("no_proxy", ""))
+        if request.url and no_proxy and should_bypass_proxies(request.url, no_proxy):
+            # Strip proxies for local/LAN addresses *after* the session-level
+            # merge has happened, so the adapter sees a direct connection.
+            kwargs.setdefault('proxies', {})
+            # Remove all proxy entries (http, https, etc.)
+            kwargs['proxies'] = {}
+            # Also clear on the PreparedRequest to be safe
+            request.proxies = {}
+        return super().send(request, **kwargs)
+
+
 def _read_proxy_config() -> dict:
     """Read proxy configuration from device.json.
 
@@ -79,7 +107,7 @@ def get_http_session() -> requests.Session:
 
     if _HTTP_SESSION is None:
         logger.debug("Initializing shared HTTP session with connection pooling")
-        _HTTP_SESSION = requests.Session()
+        _HTTP_SESSION = _DashPiSession()
 
         proxy_cfg = _read_proxy_config()
 
